@@ -1,5 +1,24 @@
 # Jenkins Docker
 
+```bash
+# edit files
+# vim terraform/terraform.tfvars
+# vim ansible/inventory
+# vim Makefile (change image tag)
+
+# create a spot instance on AWS
+make spot
+
+# create a jenkins
+make
+
+# push jenkins image
+docker push "${image}"
+
+# deploy jenkins on AWS
+make deploy
+```
+
 ### Reference
 
 1. [How To Automate Jenkins Setup with Docker and Jenkins Configuration as Code](https://www.digitalocean.com/community/tutorials/how-to-automate-jenkins-setup-with-docker-and-jenkins-configuration-as-code)

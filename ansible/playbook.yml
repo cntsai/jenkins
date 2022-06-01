@@ -25,6 +25,9 @@
         groups: docker
         append: yes
 
+    - name: reset ssh connection
+      meta: reset_connection
+
 
 - name: Start Jenkins
   hosts: jenkins
@@ -41,6 +44,11 @@
         state: directory
         owner: "{{ ansible_user }}"
         recurse: yes
+
+    - name: Upload casc.yaml
+      copy:
+        src: casc.yaml
+        dest: "{{ jenkins.directory }}/casc.yaml"
 
     - name: Run Jenkins
       docker_container:

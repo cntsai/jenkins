@@ -1,11 +1,9 @@
 jenkins:
   name: jenkins
-  image: crazyguitar/jenkins
+  image: crazyguitar/jenkins:latest
   ports:
     - "8080:8080"
     - "50000:50000"
   directory: "{{ ansible_env.HOME }}/jenkins"
   volumes:
     - "{{ ansible_env.HOME }}/jenkins:/var/jenkins_home"
-    - "{{ ansible_env.HOME }}/jenkins/casc.yaml:/var/jenkins_home/casc.yaml"
-
