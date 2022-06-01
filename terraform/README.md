@@ -2,6 +2,6 @@
 
 ```bash
 $ terraform init
-$ terraform deploy
+$ terraform apply
 $ terraform destroy
 ```
