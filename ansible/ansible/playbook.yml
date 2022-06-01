@@ -1,0 +1,51 @@
+---
+
+- name: Install Docker
+  hosts: jenkins
+  become: true
+  become_user: root
+  tasks:
+    - name: Update and upgrade packages
+      apt:
+        upgrade: yes
+        update_cache: yes
+
+    - name: Install docker
+      apt:
+        pkg:
+          - docker.io
+          - docker-compose
+
+    - name: Show ansible_user
+      debug: var=ansible_user
+
+    - name: usermod -aG docker
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+
+
+- name: Start Jenkins
+  hosts: jenkins
+  tasks:
+    - name: Show home directory
+      debug: var=ansible_env.HOME
+
+    - name: Include jenkins variables
+      include_vars: jenkins.yml
+
+    - name: Create jenkins volume folder
+      file:
+        path: "{{ jenkins.directory }}"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: docker
+        recurse: yes
+
+    - name: Run Jenkins
+      docker_container:
+        name: "{{ jenkins['name'] }}"
+        image: "{{ jenkins['image'] }}"
+        ports: "{{ jenkins['ports'] }}"
+        volumes: "{{ jenkins['volumes'] }}"

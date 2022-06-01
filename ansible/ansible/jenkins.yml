@@ -1,0 +1,9 @@
+jenkins:
+  name: jenkins
+  image: jenkins/jenkins
+  ports:
+    - "8080:8080"
+    - "50000:50000"
+  directory: "{{ ansible_env.HOME }}/jenkins"
+  volumes:
+    - "{{ ansible_env.HOME }}/jenkins:/var/jenkins_home"
