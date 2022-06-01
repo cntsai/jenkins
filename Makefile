@@ -1,6 +1,6 @@
 .PHONY: all run clean jenkins
 
-jenkins = sifive/jenkins:latest
+jenkins = crazyguitar/jenkins:latest
 
 all: jenkins
 
