@@ -7,7 +7,7 @@
 # vim Makefile (change image tag)
 
 # create a spot instance on AWS
-make spot
+make apply
 
 # create a jenkins
 make
