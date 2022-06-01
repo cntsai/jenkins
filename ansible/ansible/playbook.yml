@@ -40,7 +40,6 @@
         path: "{{ jenkins.directory }}"
         state: directory
         owner: "{{ ansible_user }}"
-        group: docker
         recurse: yes
 
     - name: Run Jenkins
