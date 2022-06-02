@@ -1,0 +1,230 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>Running the automation script on epsilon machine</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.3"/>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.4">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>syssw_automation_tools_branch_name</name>
+          <defaultValue>dev/maxh/add_qemu_tests</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>META_SIFIVE_BRANCH</name>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>FUSDK_MACHINE</name>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>Dispatcher_Id</name>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>public_or_private</name>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>NFS_Path</name>
+          <defaultValue>/work/jenkins/syssw</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>Build_Sub_Path</name>
+          <defaultValue>FUSDK-build</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>tests_to_run</name>
+          <defaultValue>stress-ng coremark dhrystone</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>Test_Result_Save_Path</name>
+          <defaultValue>test_result</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>predefine_serial_port</name>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>epsilon03</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <authToken>EPSILON03</authToken>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+# clear and reset folder if needed
+
+workdir=&quot;${NFS_Path}/${JOB_BASE_NAME}/${BUILD_ID}&quot;
+# workdir=&quot;/work/jenkins/meta_sifive_build/$FUSDK_MACHINE&quot;
+mkdir -p $workdir
+chmod a+x -R $workdir
+cd $workdir
+
+printenv
+
+# find USB COM port
+if [ ! -z &quot;${predefine_serial_port}&quot; ];
+then
+    devnode=&quot;${predefine_serial_port}&quot;
+    echo &quot;devnode is /dev/$devnode&quot;
+else
+    echo &quot;===&lt; Finding COM port &gt;===&quot;
+    ttyUSB_list=`find -L /sys/bus/usb/devices/ -maxdepth 2 -name ttyUSB\* | sed &apos;s=/[^/]*$==;s/\/$//&apos;`
+
+    for sysdevpath in $ttyUSB_list ; do
+        stand_serial_port=`cat $sysdevpath/interface`
+
+        if [ &quot;$stand_serial_port&quot; == &quot;Standard Com Port&quot; ];  then
+            echo &quot;found standard comp port at $sysdevpath&quot;
+            devnode=`find -L $sysdevpath/ -maxdepth 1 -name ttyUSB\* -exec basename \{} \;`
+            echo &quot;devnode is /dev/$devnode&quot;
+        fi
+        if [ &quot;$devnode&quot; == &quot;&quot; ]; then
+            echo &quot;*** Error&quot;
+            echo &quot;===&lt; End of Finding COM port &gt;===&quot;
+            exit 1
+        fi
+        echo &quot;===&lt; End of Finding COM port &gt;===&quot;
+    done
+fi
+
+
+##set python
+if [ ! -z `lsb_release -a | grep -o Ubuntu | head -1` ]; then
+	export PATH=/sifive/tools/python/python/3.9.2/bin:$PATH
+else
+	export PATH=/sifive/tools/python/python/rhel8/3.9.2/bin:$PATH
+fi
+
+##make sure py has this package
+pip3 install pyserial
+
+
+##get syssw_automation_tools
+cd ${workdir}
+git clone --recursive -b ${syssw_automation_tools_branch_name} git@github.com:sifive/syssw_automation_tools.git
+
+##get and build and run nbd-server
+cd ${workdir}
+wget https://sourceforge.net/projects/nbd/files/latest/download -O nbd-latest.tar.xz --no-check-certificate
+tar -xvf nbd-latest.tar.xz
+nbd_directory_name=`ls -d nbd-* | grep -v tar`
+cd ${nbd_directory_name}
+./configure
+make
+./nbd-server -C ${workdir}/syssw_automation_tools/nbd-server-cfg/server.cfg &amp;
+nbd_server_pid=$!
+
+##get non-root tftp server
+git clone git@github.com:sifive/PyTFTPd-private.git
+if [ ! -z &quot;${predefine_tftp_port}&quot; ];
+then
+    tftp_port=&quot;${predefine_tftp_port}&quot;
+else
+    tftp_port=&quot;12800&quot;
+fi
+cd PyTFTPd-private
+python3 tftpd.py ${tftp_port} ${NFS_PATH}/${Build_Sub_Path}-${public_or_private}/${FUSDK_MACHINE}/${META_SIFIVE_BRANCH} &amp;
+pyTFTPd_pid=$!
+
+set -x
+ls -al
+
+## unmatched boot to u-boot proper
+cd ${workdir}/syssw_automation_tools
+
+boardtest-power cycle
+sleep 30
+./fpga_regression_tw/script/pro_fpga_run_linux.py \
+	-i ini_templates/unmatched_ymodem_epsilon03.ini \
+    -p /dev/$devnode \
+    -l run.log -v \
+    -skip-gengdb \
+    -y -skip-ym-spl -skip-progbt -use-debugger \
+    -ubootitb ${NFS_PATH}/${Build_Sub_Path}-${public_or_private}/${FUSDK_MACHINE}/${META_SIFIVE_BRANCH}/u-boot.itb \
+    -ubootspl ${NFS_PATH}/${Build_Sub_Path}-${public_or_private}/${FUSDK_MACHINE}/${META_SIFIVE_BRANCH}/u-boot-spl.bin \
+    -y -b2uboot
+result=$?
+
+##use tftp boot to linux nbd rootfs
+${workdir}/syssw_automation_tools/automation_board_boot/unmatched_tftp_linux_nbd_rootfs.exp
+unmatched_tftp_linux_nbd_rootfs_status=$?
+##if fail, try ymodem boot to linux nbd rootfs
+if [ &quot;${unmatched_tftp_linux_nbd_rootfs_status}&quot; != &quot;0&quot; ];then
+    ${workdir}/syssw_automation_tools/automation_board_boot/unmatched_ymodem_linux_nbd_rootfs.exp
+    unmatched_ymodem_linux_nbd_rootfs_status=$?
+    ##if fail, try tftp boot to linux initramfs rootfs
+    if [ &quot;${unmatched_ymodem_linux_nbd_rootfs_status}&quot; != &quot;0&quot; ];then
+        ${workdir}/syssw_automation_tools/automation_board_boot/unmatched_tftp_linux_initramfs_rootfs.exp
+        unmatched_tftp_linux_initramfs_rootfs_status=$?
+        ##if fail, try ymodem boot to linux initramfs rootfs
+        if [ &quot;${unmatched_tftp_linux_initramfs_rootfs_status}&quot; != &quot;0&quot; ];then
+            ${workdir}/syssw_automation_tools/automation_board_boot/unmatched_ymodem_linux_initramfs_rootfs.exp
+            unmatched_ymodem_linux_initramfs_rootfs_status=$?
+        fi
+    fi
+fi
+
+##if all fails, report.
+if [ ! -z &quot;${unmatched_ymodem_linux_initramfs_rootfs_status}&quot; ];then
+    echo &quot;all booting method failed, skip the tests&quot;
+    rm -rf ${workdir}
+    exit 100
+fi
+
+##it should boot to linux right now
+set +x
+
+
+kill -9 ${nbd_server_pid}
+kill -9 ${pyTFTPd_pid}
+rm -rf ${workdir}
+
+exit $result
+
+</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers>
+    <hudson.plugins.timestamper.TimestamperBuildWrapper plugin="timestamper@1.13"/>
+    <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@1.0.0">
+      <colorMapName>xterm</colorMapName>
+    </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
+    <com.cloudbees.jenkins.plugins.sshagent.SSHAgentBuildWrapper plugin="ssh-agent@1.22">
+      <credentialIds>
+        <string>ad25d95a-4a30-4cc9-bda9-e836d51af0b9</string>
+      </credentialIds>
+      <ignoreMissing>true</ignoreMissing>
+    </com.cloudbees.jenkins.plugins.sshagent.SSHAgentBuildWrapper>
+  </buildWrappers>
+</project>

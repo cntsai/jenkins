@@ -1,0 +1,62 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><project>
+  <actions/>
+  <description/>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.33">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>tiny</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders/>
+  <publishers>
+    <com.jenkins.testresultsaggregator.TestResultsAggregator plugin="test-results-aggregator@1.2.6">
+      <subject/>
+      <recipientsList/>
+      <beforebody/>
+      <afterbody/>
+      <theme>light</theme>
+      <sortresults>NAME</sortresults>
+      <outOfDateResults/>
+      <compareWithPreviousRun>true</compareWithPreviousRun>
+      <ignoreNotFoundJobs>false</ignoreNotFoundJobs>
+      <ignoreDisabledJobs>false</ignoreDisabledJobs>
+      <ignoreAbortedJobs>false</ignoreAbortedJobs>
+      <selectedColumns>Health, Job, Status, Percentage, Total, Pass, Fail, Skip, Commits, LastRun, Duration, Description, Packages, Files, Classes, Methods, Lines, Conditions, Sonar</selectedColumns>
+      <data>
+        <com.jenkins.testresultsaggregator.data.Data>
+          <groupName>Test</groupName>
+          <jobs>
+            <com.jenkins.testresultsaggregator.data.Job>
+              <jobName>software_validation/freestyle_demo/test_junit_report/</jobName>
+              <jobFriendlyName/>
+            </com.jenkins.testresultsaggregator.data.Job>
+          </jobs>
+        </com.jenkins.testresultsaggregator.data.Data>
+      </data>
+    </com.jenkins.testresultsaggregator.TestResultsAggregator>
+  </publishers>
+  <buildWrappers/>
+</project>

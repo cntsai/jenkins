@@ -1,0 +1,121 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><project>
+  <actions/>
+  <description>TESTING, change the source code branch from to main after everything is ready.</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.33">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>TOOLCHAIN_INSTALL_DIR</name>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>TOOLCHAIN_INSTALL_NAME</name>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>META_SRC_DIR</name>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>BARE_METAL_MULTILIBS_GEN</name>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>CPUS</name>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>FREEDOM_TOOLS_PACKAGE</name>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>COPY_SRC</name>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>PREBUILT_BIN</name>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>PREBUILT_OBJ</name>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>ARCHIVE_BIN</name>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>ARCHIVE_OBJ</name>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+  </properties>
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@4.10.3">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <url>git@github.com:sifive/freedom-tools-private.git</url>
+        <credentialsId>18352a7f-c03f-4cf2-a4a5-cad442f328d6</credentialsId>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>*/sifive-toolchain</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+    <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+    <gitTool>Default</gitTool>
+    <submoduleCfg class="empty-list"/>
+    <extensions/>
+  </scm>
+  <assignedNode>nightly_big_agent_rhel8||nightly_standard_agent_rhel8</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>true</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>.jenkins/build.sh</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.plugins.ws__cleanup.WsCleanup plugin="ws-cleanup@0.40">
+      <patterns class="empty-list"/>
+      <deleteDirs>false</deleteDirs>
+      <skipWhenFailed>false</skipWhenFailed>
+      <cleanWhenSuccess>true</cleanWhenSuccess>
+      <cleanWhenUnstable>true</cleanWhenUnstable>
+      <cleanWhenFailure>false</cleanWhenFailure>
+      <cleanWhenNotBuilt>true</cleanWhenNotBuilt>
+      <cleanWhenAborted>false</cleanWhenAborted>
+      <notFailBuild>false</notFailBuild>
+      <cleanupMatrixParent>false</cleanupMatrixParent>
+      <externalDelete/>
+      <disableDeferredWipeout>false</disableDeferredWipeout>
+    </hudson.plugins.ws__cleanup.WsCleanup>
+  </publishers>
+  <buildWrappers/>
+</project>

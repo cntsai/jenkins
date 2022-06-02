@@ -1,0 +1,402 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><flow-definition plugin="workflow-job@1145.v7f2433caa07f">
+  <actions/>
+  <description>Start builds across tpp01, tpp02, tpp03, tpp04, tpp05 and tpp06.&#13;
+</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty>
+      <abortPrevious>false</abortPrevious>
+    </org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.33">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>REPO_GITURL</name>
+          <description>git-url of the freedom-tools repo to use</description>
+          <defaultValue>git@github.com:sifive/freedom-tools-private.git</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>REPO_BRANCH</name>
+          <description>branch of the freedom-tools repo to use</description>
+          <defaultValue>main</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>BUILD_TARGET</name>
+          <description>Makefile package target (module) to run (llvm and linux targets require freedom-tools-private repo)</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>clean</string>
+              <string>toolchain</string>
+              <string>toolsuite</string>
+              <string>qemu</string>
+              <string>qemu-lite</string>
+              <string>sdk-utilities</string>
+              <string>spike-dasm</string>
+              <string>buildtools</string>
+              <string>openocd</string>
+              <string>trace-decoder</string>
+              <string>xc3sprog</string>
+              <string>binutils-only</string>
+              <string>gcc-only</string>
+              <string>gdb-only</string>
+              <string>llvm-only</string>
+              <string>toolchain-linux</string>
+              <string>toolsuite-linux</string>
+              <string>binutils-linux</string>
+              <string>gcc-linux</string>
+              <string>gdb-linux</string>
+              <string>llvm-linux</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>EXTRA_SUFFIX</name>
+          <description>Extra package version suffix</description>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>EXTRA_OPTION</name>
+          <description>Extra text to control a build</description>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>BUILD_FOR_MACOS</name>
+          <description>Build for MacOS</description>
+          <defaultValue>true</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>BUILD_FOR_CENTOS</name>
+          <description>Build for CentOS</description>
+          <defaultValue>true</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>BUILD_FOR_UBUNTU</name>
+          <description>Build for Ubuntu</description>
+          <defaultValue>true</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>BUILD_FOR_WINDOWS</name>
+          <description>Build for Windows</description>
+          <defaultValue>true</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>BUILD_FOR_REDHAT</name>
+          <description>Build for Redhat (always enabled independent of this checkbox)</description>
+          <defaultValue>true</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>UPLOAD_FILES</name>
+          <description>Upload files to /work/dev-tools/preview/freedom-tools-packages/parameterized-* and AWS S3</description>
+          <defaultValue>true</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>WIPEOUT_FILES</name>
+          <description>Delete build files on build server</description>
+          <defaultValue>true</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>DO_SIFIVE_MODULE</name>
+          <description>Create a new branch with an install script in sifive-modules repo (requires UPLOAD_FILES enabled)</description>
+          <defaultValue>true</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>EXECUTE_TESTS</name>
+          <description>Execute tests defined for build target (requires UPLOAD_FILES enabled)</description>
+          <defaultValue>true</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>TOOLCHAIN_META_GITREF</name>
+          <description>Sha1 or branch name of toolchain-meta-next for toolchain CI chaining</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2660.vb_c0412dc4e6d">
+    <script>    stage('Trigger Builds In Parallel') {
+        def BUILD_STATUS = 'FAILED'
+        def BUILD_COLOR = '#FF0000'
+        try {
+            slackSend(
+                channel: '#freedom-tools-ci',
+                message: "STARTED : ${JOB_NAME} # ${BUILD_NUMBER} @ ${BUILD_URL} ? REPO_GITURL=${REPO_GITURL} REPO_BRANCH=${REPO_BRANCH} BUILD_TARGET=${BUILD_TARGET} EXTRA_SUFFIX=${EXTRA_SUFFIX} EXTRA_OPTION=${EXTRA_OPTION} BUILD_FOR_MACOS=${BUILD_FOR_MACOS} BUILD_FOR_CENTOS=${BUILD_FOR_CENTOS} BUILD_FOR_UBUNTU=${BUILD_FOR_UBUNTU} BUILD_FOR_WINDOWS=${BUILD_FOR_WINDOWS} BUILD_FOR_REDHAT=${BUILD_FOR_REDHAT} UPLOAD_FILES=${UPLOAD_FILES} WIPEOUT_FILES=${WIPEOUT_FILES} DO_SIFIVE_MODULE=${DO_SIFIVE_MODULE} TOOLCHAIN_META_GITREF=${TOOLCHAIN_META_GITREF}",
+                color: '#0000FF'
+            )
+            // Freestyle build trigger calls a list of jobs
+            // Pipeline build() step only calls one job
+            // To run all three jobs in parallel, we use "parallel" step
+            // https://jenkins.io/doc/pipeline/examples/#jobs-in-parallel
+            parallel(
+                mac: {
+                    if (params.BUILD_FOR_MACOS == true) {
+                        build job: 'tpp01--build-binary-packages--parameterized', parameters: [
+                            [$class: 'StringParameterValue', name: 'REPO_GITURL', value: String.valueOf(REPO_GITURL)],
+                            [$class: 'StringParameterValue', name: 'REPO_BRANCH', value: String.valueOf(REPO_BRANCH)],
+                            [$class: 'StringParameterValue', name: 'EXTRA_SUFFIX', value: String.valueOf(EXTRA_SUFFIX)],
+                            [$class: 'StringParameterValue', name: 'EXTRA_OPTION', value: String.valueOf(EXTRA_OPTION)],
+                            [$class: 'StringParameterValue', name: 'BUILD_TARGET', value: String.valueOf(BUILD_TARGET)],
+                            [$class: 'StringParameterValue', name: 'TOOLCHAIN_META_GITREF', value: String.valueOf(TOOLCHAIN_META_GITREF)]
+                        ]
+                        if (params.WIPEOUT_FILES == true) {
+                            build job: 'tpp01--wipeout-after-building--parameterized', parameters: [[$class: 'StringParameterValue', name: 'WIPEOUT_PATH',
+                                        value: String.valueOf('/scratch/jenkins/workspace/tpp-freedom-tools/tpp01--build-binary-packages--parameterized/obj')]]
+                            build job: 'tpp01--wipeout-after-building--parameterized', parameters: [[$class: 'StringParameterValue', name: 'WIPEOUT_PATH',
+                                        value: String.valueOf('/scratch/jenkins/workspace/tpp-freedom-tools/tpp01--build-binary-packages--parameterized/src')]]
+                        }
+                    }
+                },
+                ubuntu: {
+                    if (params.BUILD_FOR_UBUNTU == true) {
+                        build job: 'tpp03--build-binary-packages--parameterized', parameters: [
+                            [$class: 'StringParameterValue', name: 'REPO_GITURL', value: String.valueOf(REPO_GITURL)],
+                            [$class: 'StringParameterValue', name: 'REPO_BRANCH', value: String.valueOf(REPO_BRANCH)],
+                            [$class: 'StringParameterValue', name: 'EXTRA_SUFFIX', value: String.valueOf(EXTRA_SUFFIX)],
+                            [$class: 'StringParameterValue', name: 'EXTRA_OPTION', value: String.valueOf(EXTRA_OPTION)],
+                            [$class: 'StringParameterValue', name: 'BUILD_TARGET', value: String.valueOf(BUILD_TARGET)],
+                            [$class: 'StringParameterValue', name: 'TOOLCHAIN_META_GITREF', value: String.valueOf(TOOLCHAIN_META_GITREF)]
+                        ]
+                        if (params.WIPEOUT_FILES == true) {
+                            build job: 'tpp03--wipeout-after-building--parameterized', parameters: [[$class: 'StringParameterValue', name: 'WIPEOUT_PATH',
+                                        value: String.valueOf('/scratch/jenkins/workspace/tpp-freedom-tools/tpp03--build-binary-packages--parameterized/obj')]]
+                            build job: 'tpp03--wipeout-after-building--parameterized', parameters: [[$class: 'StringParameterValue', name: 'WIPEOUT_PATH',
+                                        value: String.valueOf('/scratch/jenkins/workspace/tpp-freedom-tools/tpp03--build-binary-packages--parameterized/src')]]
+                        }
+                    }
+                },
+                centos: {
+                    if (params.BUILD_FOR_CENTOS == true) {
+                        build job: 'tpp04--build-binary-packages--parameterized', parameters: [
+                            [$class: 'StringParameterValue', name: 'REPO_GITURL', value: String.valueOf(REPO_GITURL)],
+                            [$class: 'StringParameterValue', name: 'REPO_BRANCH', value: String.valueOf(REPO_BRANCH)],
+                            [$class: 'StringParameterValue', name: 'EXTRA_SUFFIX', value: String.valueOf(EXTRA_SUFFIX)],
+                            [$class: 'StringParameterValue', name: 'EXTRA_OPTION', value: String.valueOf(EXTRA_OPTION)],
+                            [$class: 'StringParameterValue', name: 'BUILD_TARGET', value: String.valueOf(BUILD_TARGET)],
+                            [$class: 'StringParameterValue', name: 'TOOLCHAIN_META_GITREF', value: String.valueOf(TOOLCHAIN_META_GITREF)]
+                        ]
+                        if (params.WIPEOUT_FILES == true) {
+                            build job: 'tpp04--wipeout-after-building--parameterized', parameters: [[$class: 'StringParameterValue', name: 'WIPEOUT_PATH',
+                                        value: String.valueOf('/home/scratch/jenkins/workspace/tpp-freedom-tools/tpp04--build-binary-packages--parameterized/obj')]]
+                            build job: 'tpp04--wipeout-after-building--parameterized', parameters: [[$class: 'StringParameterValue', name: 'WIPEOUT_PATH',
+                                        value: String.valueOf('/home/scratch/jenkins/workspace/tpp-freedom-tools/tpp04--build-binary-packages--parameterized/src')]]
+                        }
+                    }
+                },
+                windows: {
+                    if (params.BUILD_FOR_WINDOWS == true) {
+                        build job: 'tpp05--build-binary-packages--parameterized', parameters: [
+                            [$class: 'StringParameterValue', name: 'REPO_GITURL', value: String.valueOf(REPO_GITURL)],
+                            [$class: 'StringParameterValue', name: 'REPO_BRANCH', value: String.valueOf(REPO_BRANCH)],
+                            [$class: 'StringParameterValue', name: 'EXTRA_SUFFIX', value: String.valueOf(EXTRA_SUFFIX)],
+                            [$class: 'StringParameterValue', name: 'EXTRA_OPTION', value: String.valueOf(EXTRA_OPTION)],
+                            [$class: 'StringParameterValue', name: 'BUILD_TARGET', value: String.valueOf(BUILD_TARGET)],
+                            [$class: 'StringParameterValue', name: 'TOOLCHAIN_META_GITREF', value: String.valueOf(TOOLCHAIN_META_GITREF)]
+                        ]
+                        if (params.WIPEOUT_FILES == true) {
+                            build job: 'tpp05--wipeout-after-building--parameterized', parameters: [[$class: 'StringParameterValue', name: 'WIPEOUT_PATH',
+                                        value: String.valueOf('/scratch/jenkins/workspace/tpp-freedom-tools/tpp05--build-binary-packages--parameterized/obj')]]
+                            build job: 'tpp05--wipeout-after-building--parameterized', parameters: [[$class: 'StringParameterValue', name: 'WIPEOUT_PATH',
+                                        value: String.valueOf('/scratch/jenkins/workspace/tpp-freedom-tools/tpp05--build-binary-packages--parameterized/src')]]
+                        }
+                    }
+                },
+                redhat: {
+                    build job: 'tpp06--build-binary-packages--parameterized', parameters: [
+                        [$class: 'StringParameterValue', name: 'REPO_GITURL', value: String.valueOf(REPO_GITURL)],
+                        [$class: 'StringParameterValue', name: 'REPO_BRANCH', value: String.valueOf(REPO_BRANCH)],
+                        [$class: 'StringParameterValue', name: 'EXTRA_SUFFIX', value: String.valueOf(EXTRA_SUFFIX)],
+                        [$class: 'StringParameterValue', name: 'EXTRA_OPTION', value: String.valueOf(EXTRA_OPTION)],
+                        [$class: 'StringParameterValue', name: 'BUILD_TARGET', value: String.valueOf(BUILD_TARGET)],
+                        [$class: 'StringParameterValue', name: 'TOOLCHAIN_META_GITREF', value: String.valueOf(TOOLCHAIN_META_GITREF)]
+                    ]
+                    if (params.WIPEOUT_FILES == true) {
+                        build job: 'tpp06--wipeout-after-building--parameterized', parameters: [[$class: 'StringParameterValue', name: 'WIPEOUT_PATH',
+                                    value: String.valueOf('/home/scratch/jenkins/workspace/tpp-freedom-tools/tpp06--build-binary-packages--parameterized/obj')]]
+                        build job: 'tpp06--wipeout-after-building--parameterized', parameters: [[$class: 'StringParameterValue', name: 'WIPEOUT_PATH',
+                                    value: String.valueOf('/home/scratch/jenkins/workspace/tpp-freedom-tools/tpp06--build-binary-packages--parameterized/src')]]
+                    }
+                },
+                failFast: false
+            )
+            if (params.UPLOAD_FILES == true) {
+                sleep 5
+                build job: 'tpp06--upload-binary-packages--parameterized', parameters: [[$class: 'StringParameterValue', name: 'EXTRA_NUMBER', value: String.valueOf(BUILD_NUMBER)], [$class: 'StringParameterValue', name: 'EXTRA_TARGET', value: String.valueOf(BUILD_TARGET)]]
+                sleep 5
+                build job: 'tpp06--integrate-binary-packages--parameterized', parameters: [[$class: 'StringParameterValue', name: 'EXTRA_NUMBER', value: String.valueOf(BUILD_NUMBER)], [$class: 'StringParameterValue', name: 'EXTRA_TARGET', value: String.valueOf(BUILD_TARGET)]]
+
+                if (params.BUILD_FOR_WINDOWS == true) {
+                    sleep 5
+                    build job: 'tpp05--upload-binary-packages--parameterized', parameters: [[$class: 'StringParameterValue', name: 'EXTRA_NUMBER', value: String.valueOf(BUILD_NUMBER)], [$class: 'StringParameterValue', name: 'EXTRA_TARGET', value: String.valueOf(BUILD_TARGET)]]
+                    sleep 5
+                    build job: 'tpp05--integrate-binary-packages--parameterized', parameters: [[$class: 'StringParameterValue', name: 'EXTRA_NUMBER', value: String.valueOf(BUILD_NUMBER)], [$class: 'StringParameterValue', name: 'EXTRA_TARGET', value: String.valueOf(BUILD_TARGET)]]
+                }
+                if (params.BUILD_FOR_CENTOS == true) {
+                    sleep 5
+                    build job: 'tpp04--upload-binary-packages--parameterized', parameters: [[$class: 'StringParameterValue', name: 'EXTRA_NUMBER', value: String.valueOf(BUILD_NUMBER)], [$class: 'StringParameterValue', name: 'EXTRA_TARGET', value: String.valueOf(BUILD_TARGET)]]
+                    sleep 5
+                    build job: 'tpp04--integrate-binary-packages--parameterized', parameters: [[$class: 'StringParameterValue', name: 'EXTRA_NUMBER', value: String.valueOf(BUILD_NUMBER)], [$class: 'StringParameterValue', name: 'EXTRA_TARGET', value: String.valueOf(BUILD_TARGET)]]
+                }
+                if (params.BUILD_FOR_UBUNTU == true) {
+                    sleep 5
+                    build job: 'tpp03--upload-binary-packages--parameterized', parameters: [[$class: 'StringParameterValue', name: 'EXTRA_NUMBER', value: String.valueOf(BUILD_NUMBER)], [$class: 'StringParameterValue', name: 'EXTRA_TARGET', value: String.valueOf(BUILD_TARGET)]]
+                    sleep 5
+                    build job: 'tpp03--integrate-binary-packages--parameterized', parameters: [[$class: 'StringParameterValue', name: 'EXTRA_NUMBER', value: String.valueOf(BUILD_NUMBER)], [$class: 'StringParameterValue', name: 'EXTRA_TARGET', value: String.valueOf(BUILD_TARGET)]]
+                }
+                if (params.BUILD_FOR_MACOS == true) {
+                    sleep 5
+                    build job: 'tpp01--upload-binary-packages--parameterized', parameters: [[$class: 'StringParameterValue', name: 'EXTRA_NUMBER', value: String.valueOf(BUILD_NUMBER)], [$class: 'StringParameterValue', name: 'EXTRA_TARGET', value: String.valueOf(BUILD_TARGET)]]
+                    sleep 5
+                    build job: 'tpp01--integrate-binary-packages--parameterized', parameters: [[$class: 'StringParameterValue', name: 'EXTRA_NUMBER', value: String.valueOf(BUILD_NUMBER)], [$class: 'StringParameterValue', name: 'EXTRA_TARGET', value: String.valueOf(BUILD_TARGET)]]
+                }
+
+                sleep 5
+                def adpjob = build job: 'tpp06--administer-binary-packages--parameterized', parameters: [
+                    [$class: 'StringParameterValue', name: 'EXTRA_NUMBER', value: String.valueOf(BUILD_NUMBER)],
+                    [$class: 'StringParameterValue', name: 'EXTRA_TARGET', value: String.valueOf(BUILD_TARGET)],
+                    [$class: 'BooleanParameterValue', name: 'DO_SIFIVE_MODULE', value: Boolean.valueOf(DO_SIFIVE_MODULE)]
+                ]
+                def adplog = String.valueOf(adpjob.rawBuild.log)
+                def adpplt = adplog.replaceFirst("(?s).*BEGIN_PACKAGE_LIST", "").replaceFirst("(?s)END_PACKAGE_LIST.*", "").replaceAll("\\[echo\\]", "").replaceAll("\\[exec\\]", "")
+                def adpiit = adplog.replaceFirst("(?s).*BEGIN_INSTALL_ITEM", "").replaceFirst("(?s)END_INSTALL_ITEM.*", "").replaceAll("\\[echo\\]", "").replaceAll("\\[exec\\]", "")
+                def adpbit = adplog.replaceFirst("(?s).*BEGIN_BUILD_ID", "").replaceFirst("(?s)END_BUILD_ID.*", "")
+                def adpght = adplog.replaceFirst("(?s).*BEGIN_GIT_HASH", "").replaceFirst("(?s)END_GIT_HASH.*", "")
+                println adpplt
+                println adpiit
+                slackSend(
+                    channel: '#freedom-tools-ci',
+                    message: adpplt,
+                    color: '#000000'
+                )
+                slackSend(
+                    channel: '#freedom-tools-ci',
+                    message: adpiit,
+                    color: '#000000'
+                )
+
+                if (params.EXECUTE_TESTS == true) {
+                    sleep 5
+                    build job: 'tpp06--download-binary-packages--parameterized', parameters: [[$class: 'StringParameterValue', name: 'EXTRA_NUMBER', value: String.valueOf(BUILD_NUMBER)], [$class: 'StringParameterValue', name: 'EXTRA_TARGET', value: String.valueOf(BUILD_TARGET)], [$class: 'StringParameterValue', name: 'EXTRA_MARKER', value: String.valueOf(adpbit)], [$class: 'StringParameterValue', name: 'EXTRA_TICKET', value: String.valueOf(adpght)]]
+
+                    if (params.BUILD_FOR_WINDOWS == true) {
+                        sleep 5
+                        build job: 'tpp02--download-binary-packages--parameterized', parameters: [[$class: 'StringParameterValue', name: 'EXTRA_NUMBER', value: String.valueOf(BUILD_NUMBER)], [$class: 'StringParameterValue', name: 'EXTRA_TARGET', value: String.valueOf(BUILD_TARGET)], [$class: 'StringParameterValue', name: 'EXTRA_MARKER', value: String.valueOf(adpbit)], [$class: 'StringParameterValue', name: 'EXTRA_TICKET', value: String.valueOf(adpght)]]
+                    }
+                    if (params.BUILD_FOR_CENTOS == true) {
+                        sleep 5
+                        build job: 'tpp04--download-binary-packages--parameterized', parameters: [[$class: 'StringParameterValue', name: 'EXTRA_NUMBER', value: String.valueOf(BUILD_NUMBER)], [$class: 'StringParameterValue', name: 'EXTRA_TARGET', value: String.valueOf(BUILD_TARGET)], [$class: 'StringParameterValue', name: 'EXTRA_MARKER', value: String.valueOf(adpbit)], [$class: 'StringParameterValue', name: 'EXTRA_TICKET', value: String.valueOf(adpght)]]
+                    }
+                    if (params.BUILD_FOR_UBUNTU == true) {
+                        sleep 5
+                        build job: 'tpp03--download-binary-packages--parameterized', parameters: [[$class: 'StringParameterValue', name: 'EXTRA_NUMBER', value: String.valueOf(BUILD_NUMBER)], [$class: 'StringParameterValue', name: 'EXTRA_TARGET', value: String.valueOf(BUILD_TARGET)], [$class: 'StringParameterValue', name: 'EXTRA_MARKER', value: String.valueOf(adpbit)], [$class: 'StringParameterValue', name: 'EXTRA_TICKET', value: String.valueOf(adpght)]]
+                    }
+                    if (params.BUILD_FOR_MACOS == true) {
+                        sleep 5
+                        build job: 'tpp01--download-binary-packages--parameterized', parameters: [[$class: 'StringParameterValue', name: 'EXTRA_NUMBER', value: String.valueOf(BUILD_NUMBER)], [$class: 'StringParameterValue', name: 'EXTRA_TARGET', value: String.valueOf(BUILD_TARGET)], [$class: 'StringParameterValue', name: 'EXTRA_MARKER', value: String.valueOf(adpbit)], [$class: 'StringParameterValue', name: 'EXTRA_TICKET', value: String.valueOf(adpght)]]
+                    }
+
+                    parallel(
+                        mac: {
+                            if (params.BUILD_FOR_MACOS == true) {
+                                build job: 'tpp01--test-binary-packages--parameterized', parameters: [
+                                    [$class: 'StringParameterValue', name: 'REPO_GITURL', value: String.valueOf(REPO_GITURL)],
+                                    [$class: 'StringParameterValue', name: 'REPO_BRANCH', value: String.valueOf(REPO_BRANCH)],
+                                    [$class: 'StringParameterValue', name: 'EXTRA_SUFFIX', value: String.valueOf(EXTRA_SUFFIX)],
+                                    [$class: 'StringParameterValue', name: 'EXTRA_OPTION', value: String.valueOf(EXTRA_OPTION)],
+                                    [$class: 'StringParameterValue', name: 'TEST_TARGET', value: String.valueOf(BUILD_TARGET)],
+                                    [$class: 'StringParameterValue', name: 'TOOLCHAIN_META_GITREF', value: String.valueOf(TOOLCHAIN_META_GITREF)]
+                                ]
+                                if (params.WIPEOUT_FILES == true) {
+                                }
+                            }
+                        },
+                        ubuntu: {
+                            if (params.BUILD_FOR_UBUNTU == true) {
+                                build job: 'tpp03--test-binary-packages--parameterized', parameters: [
+                                    [$class: 'StringParameterValue', name: 'REPO_GITURL', value: String.valueOf(REPO_GITURL)],
+                                    [$class: 'StringParameterValue', name: 'REPO_BRANCH', value: String.valueOf(REPO_BRANCH)],
+                                    [$class: 'StringParameterValue', name: 'EXTRA_SUFFIX', value: String.valueOf(EXTRA_SUFFIX)],
+                                    [$class: 'StringParameterValue', name: 'EXTRA_OPTION', value: String.valueOf(EXTRA_OPTION)],
+                                    [$class: 'StringParameterValue', name: 'TEST_TARGET', value: String.valueOf(BUILD_TARGET)],
+                                    [$class: 'StringParameterValue', name: 'TOOLCHAIN_META_GITREF', value: String.valueOf(TOOLCHAIN_META_GITREF)]
+                                ]
+                                if (params.WIPEOUT_FILES == true) {
+                                }
+                            }
+                        },
+                        centos: {
+                            if (params.BUILD_FOR_CENTOS == true) {
+                                build job: 'tpp04--test-binary-packages--parameterized', parameters: [
+                                    [$class: 'StringParameterValue', name: 'REPO_GITURL', value: String.valueOf(REPO_GITURL)],
+                                    [$class: 'StringParameterValue', name: 'REPO_BRANCH', value: String.valueOf(REPO_BRANCH)],
+                                    [$class: 'StringParameterValue', name: 'EXTRA_SUFFIX', value: String.valueOf(EXTRA_SUFFIX)],
+                                    [$class: 'StringParameterValue', name: 'EXTRA_OPTION', value: String.valueOf(EXTRA_OPTION)],
+                                    [$class: 'StringParameterValue', name: 'TEST_TARGET', value: String.valueOf(BUILD_TARGET)],
+                                    [$class: 'StringParameterValue', name: 'TOOLCHAIN_META_GITREF', value: String.valueOf(TOOLCHAIN_META_GITREF)]
+                                ]
+                                if (params.WIPEOUT_FILES == true) {
+                                }
+                            }
+                        },
+                        windows: {
+                            if (params.BUILD_FOR_WINDOWS == true) {
+                                build job: 'tpp02--test-binary-packages--parameterized', parameters: [
+                                    [$class: 'StringParameterValue', name: 'REPO_GITURL', value: String.valueOf(REPO_GITURL)],
+                                    [$class: 'StringParameterValue', name: 'REPO_BRANCH', value: String.valueOf(REPO_BRANCH)],
+                                    [$class: 'StringParameterValue', name: 'EXTRA_SUFFIX', value: String.valueOf(EXTRA_SUFFIX)],
+                                    [$class: 'StringParameterValue', name: 'EXTRA_OPTION', value: String.valueOf(EXTRA_OPTION)],
+                                    [$class: 'StringParameterValue', name: 'TEST_TARGET', value: String.valueOf(BUILD_TARGET)],
+                                    [$class: 'StringParameterValue', name: 'TOOLCHAIN_META_GITREF', value: String.valueOf(TOOLCHAIN_META_GITREF)]
+                                ]
+                                if (params.WIPEOUT_FILES == true) {
+                                }
+                            }
+                        },
+                        redhat: {
+                            build job: 'tpp06--test-binary-packages--parameterized', parameters: [
+                                [$class: 'StringParameterValue', name: 'REPO_GITURL', value: String.valueOf(REPO_GITURL)],
+                                [$class: 'StringParameterValue', name: 'REPO_BRANCH', value: String.valueOf(REPO_BRANCH)],
+                                [$class: 'StringParameterValue', name: 'EXTRA_SUFFIX', value: String.valueOf(EXTRA_SUFFIX)],
+                                [$class: 'StringParameterValue', name: 'EXTRA_OPTION', value: String.valueOf(EXTRA_OPTION)],
+                                [$class: 'StringParameterValue', name: 'TEST_TARGET', value: String.valueOf(BUILD_TARGET)],
+                                [$class: 'StringParameterValue', name: 'TOOLCHAIN_META_GITREF', value: String.valueOf(TOOLCHAIN_META_GITREF)]
+                            ]
+                            if (params.WIPEOUT_FILES == true) {
+                            }
+                        },
+                        failFast: false
+                    )
+                }
+            }
+            BUILD_STATUS = 'PASSED'
+            BUILD_COLOR = '#00FF00'
+        }
+        finally {
+            slackSend(
+                channel: '#freedom-tools-ci',
+                message: "${BUILD_STATUS} : ${JOB_NAME} # ${BUILD_NUMBER} @ ${BUILD_URL} ? REPO_GITURL=${REPO_GITURL} REPO_BRANCH=${REPO_BRANCH} BUILD_TARGET=${BUILD_TARGET} EXTRA_SUFFIX=${EXTRA_SUFFIX} EXTRA_OPTION=${EXTRA_OPTION} BUILD_FOR_MACOS=${BUILD_FOR_MACOS} BUILD_FOR_CENTOS=${BUILD_FOR_CENTOS} BUILD_FOR_UBUNTU=${BUILD_FOR_UBUNTU} BUILD_FOR_WINDOWS=${BUILD_FOR_WINDOWS} BUILD_FOR_REDHAT=${BUILD_FOR_REDHAT} UPLOAD_FILES=${UPLOAD_FILES} WIPEOUT_FILES=${WIPEOUT_FILES} DO_SIFIVE_MODULE=${DO_SIFIVE_MODULE} TOOLCHAIN_META_GITREF=${TOOLCHAIN_META_GITREF}",
+                color: BUILD_COLOR
+            )
+        }
+    }
+</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <authToken>oi3451aa</authToken>
+  <disabled>false</disabled>
+</flow-definition>

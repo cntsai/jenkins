@@ -1,0 +1,269 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><project>
+  <actions/>
+  <description>Build public freedom-u-sdk repository.</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>14</daysToKeep>
+        <numToKeep>-1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.33">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>GIT_REF</name>
+          <description>Branch/Commit/Symref to fetch manifest file by repo utility.</description>
+          <defaultValue>master</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>GIT_REPO</name>
+          <description>Repository to fetch manifest file by repo utiity.</description>
+          <defaultValue>https://github.com/sifive/freedom-u-sdk.git</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>REPO_MANIFEST</name>
+          <description>Path to manifest file for repo utility.</description>
+          <defaultValue>tools/manifests/sifive.xml</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>BB_PACKAGES</name>
+          <description>Package(s) to be built by BitBake.</description>
+          <defaultValue>demo-coreip-cli</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>OE_MACHINE</name>
+          <description>Value for OpenEmbedded MACHINE variable.</description>
+          <defaultValue>qemuriscv64</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>ARTIFACTS_NFS_PATH</name>
+          <description>Path to NFS /work directory where to store build artifacts.</description>
+          <defaultValue>/nfs/teams/sw/share/syssw/jenkins/fusdk-public</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>WORKDIR_PATH</name>
+          <description>Path to /scratch directory where to build OpenEmbedded.</description>
+          <defaultValue>/scratch/syssw/jenkins/fusdk-public</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+  </properties>
+  <scm class="hudson.plugins.repo.RepoScm" plugin="repo@1.14.0">
+    <manifestRepositoryUrl>$GIT_REPO</manifestRepositoryUrl>
+    <manifestFile>$REPO_MANIFEST</manifestFile>
+    <manifestBranch>$GIT_REF</manifestBranch>
+    <jobs>0</jobs>
+    <depth>0</depth>
+    <currentBranch>true</currentBranch>
+    <resetFirst>false</resetFirst>
+    <cleanFirst>false</cleanFirst>
+    <quiet>true</quiet>
+    <forceSync>true</forceSync>
+    <trace>false</trace>
+    <showAllChanges>true</showAllChanges>
+    <noTags>false</noTags>
+    <manifestSubmodules>false</manifestSubmodules>
+    <fetchSubmodules>false</fetchSubmodules>
+    <ignoreProjects class="linked-hash-set">
+      <string/>
+    </ignoreProjects>
+    <noCloneBundle>false</noCloneBundle>
+    <worktree>false</worktree>
+  </scm>
+  <assignedNode>syssw-fusdk-build</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <authToken>fusdkpublicmanual</authToken>
+  <triggers>
+    <hudson.triggers.SCMTrigger>
+      <spec>H H * * *</spec>
+      <ignorePostCommitHooks>false</ignorePostCommitHooks>
+    </hudson.triggers.SCMTrigger>
+  </triggers>
+  <concurrentBuild>true</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/usr/bin/env bash
+set -euxo pipefail
+
+# This doesn't work in Jenkins
+# module load python/python/3.9.2
+
+# Figure out details about SLURM node
+echo $NODE_NAME
+hostname
+date
+
+# Information from the node
+cat /etc/os-release
+lscpu
+nproc
+free -g
+# df might fail on some .wake / fuse files
+# df -h
+env
+
+# Create and switch to a proper work location (/scratch)
+#WORKDIR=$WORKDIR_PATH/$JOB_BASE_NAME/$BUILD_ID
+#rm -rf $WORKDIR
+#mkdir -p $WORKDIR
+#chgrp -R syssw $WORKDIR
+#cd $WORKDIR
+
+# Check that we have system Python
+which python3
+
+# Unset any proxies that might be there
+#unset https_proxy
+#unset http_proxy
+
+#mkdir -p $WORKSPACE_TMP
+
+# Get repo tool
+#mkdir -p $WORKDIR/bin
+#PATH=$WORKDIR/bin:$PATH
+
+#export GOOGLE_REPO=$(mktemp $WORKSPACE_TMP/repo.XXXXXXXXX)
+#curl -o ${GOOGLE_REPO} https://storage.googleapis.com/git-repo-downloads/repo
+#gpg --keyserver keys.openpgp.org --recv-key 8BB9AD793E8E6153AF0F9A4416530D5E920F5C65
+#curl -s https://storage.googleapis.com/git-repo-downloads/repo.asc | gpg --verify - ${GOOGLE_REPO} &amp;&amp; install -m 755 ${GOOGLE_REPO} $WORKDIR/bin/repo
+
+#unset https_proxy
+#unset http_proxy
+
+#which repo
+
+#python3 $WORKDIR/bin/repo init -u $GIT_REPO -b $GIT_REF -m $REPO_MANIFEST
+#python3 $WORKDIR/bin/repo sync
+#python3 $WORKDIR/bin/repo start ci --all
+
+# Get the toolchain
+#./openembedded-core/scripts/install-buildtools -r yocto-3.2_M2 -t 20200729
+#. ./openembedded-core/buildtools/environment-setup-x86_64-pokysdk-linux
+source /nfs/teams/sw/static/syssw/jenkins/buildtools/yocto-3.2_M2_20200729_3.1+snapshot/environment-setup-x86_64-pokysdk-linux
+
+# Init OE environment
+set +euxo pipefail
+source ./freedom-u-sdk/setup.sh
+set -euxo pipefail
+
+sed -i "s@^.*DL_DIR ?= .*@DL_DIR ?= \"/nfs/teams/sw/static/syssw/jenkins/downloads\"@" ${WORKSPACE}/build/conf/local.conf
+# Start building
+# MACHINE=$OE_MACHINE BB_NUMBER_THREADS=$(($(nproc) / 4)) nice ionice -c3 time bitbake $BB_PACKAGES
+MACHINE=$OE_MACHINE nice ionice -c3 time bitbake $BB_PACKAGES
+
+mkdir -p $ARTIFACTS_NFS_PATH/$JOB_BASE_NAME/$BUILD_ID
+rsync -avzh $WORKSPACE/build/tmp-glibc/deploy $ARTIFACTS_NFS_PATH/$JOB_BASE_NAME/$BUILD_ID/
+
+# XXX: we need OE_MACHINE in the path and have a symlink to point to the latest build
+
+# 23:40:37 + rm -rf /scratch/syssw/jenkins/fusdk-public-davidlt/fusdk-public-build/10
+# 23:40:37 rm: cannot remove '/scratch/syssw/jenkins/fusdk-public-davidlt/fusdk-public-build/10/build/buildhistory/.git': Directory not empty
+# Something must be writing to the directory while we are deleting
+# delay deleting
+
+sleep 60
+#rm -rf $WORKDIR
+
+set +euxo pipefail</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.plugins.logparser.LogParserPublisher plugin="log-parser@2.2">
+      <unstableOnWarning>true</unstableOnWarning>
+      <failBuildOnError>true</failBuildOnError>
+      <showGraphs>true</showGraphs>
+      <useProjectRule>true</useProjectRule>
+      <projectRulePath>/nfs/teams/sw/static/swqa/jenkins/plugins/log-parser/bitbake_log.txt</projectRulePath>
+    </hudson.plugins.logparser.LogParserPublisher>
+    <io.jenkins.plugins.analysis.core.steps.IssuesRecorder plugin="warnings-ng@9.11.1">
+      <analysisTools>
+        <io.jenkins.plugins.analysis.warnings.Gcc4>
+          <id/>
+          <name/>
+          <jenkins plugin="plugin-util-api@2.14.0"/>
+          <pattern>build/tmp-glibc/work/qemuriscv64-oe-linux/**/temp/log.do_compile</pattern>
+          <reportEncoding/>
+          <skipSymbolicLinks>false</skipSymbolicLinks>
+        </io.jenkins.plugins.analysis.warnings.Gcc4>
+      </analysisTools>
+      <sourceCodeEncoding/>
+      <sourceDirectory/>
+      <sourceDirectories/>
+      <ignoreQualityGate>false</ignoreQualityGate>
+      <ignoreFailedBuilds>true</ignoreFailedBuilds>
+      <failOnError>false</failOnError>
+      <healthy>0</healthy>
+      <unhealthy>0</unhealthy>
+      <minimumSeverity plugin="analysis-model-api@10.9.3">
+        <name>LOW</name>
+      </minimumSeverity>
+      <filters/>
+      <isEnabledForFailure>false</isEnabledForFailure>
+      <isAggregatingResults>false</isAggregatingResults>
+      <isBlameDisabled>false</isBlameDisabled>
+      <skipPublishingChecks>false</skipPublishingChecks>
+      <publishAllIssues>false</publishAllIssues>
+      <qualityGates/>
+      <trendChartType>AGGREGATION_TOOLS</trendChartType>
+      <scm/>
+    </io.jenkins.plugins.analysis.core.steps.IssuesRecorder>
+  </publishers>
+  <buildWrappers>
+    <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.40">
+      <deleteDirs>false</deleteDirs>
+      <cleanupParameter/>
+      <externalDelete/>
+      <disableDeferredWipeout>false</disableDeferredWipeout>
+    </hudson.plugins.ws__cleanup.PreBuildCleanup>
+    <hudson.plugins.build__timeout.BuildTimeoutWrapper plugin="build-timeout@1.20">
+      <strategy class="hudson.plugins.build_timeout.impl.AbsoluteTimeOutStrategy">
+        <timeoutMinutes>360</timeoutMinutes>
+      </strategy>
+      <operationList>
+        <hudson.plugins.build__timeout.operations.FailOperation/>
+      </operationList>
+    </hudson.plugins.build__timeout.BuildTimeoutWrapper>
+    <hudson.plugins.timestamper.TimestamperBuildWrapper plugin="timestamper@1.17"/>
+    <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@1.0.1">
+      <colorMapName>xterm</colorMapName>
+    </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
+    <com.cloudbees.jenkins.plugins.sshagent.SSHAgentBuildWrapper plugin="ssh-agent@1.24.1">
+      <credentialIds>
+        <string>ad25d95a-4a30-4cc9-bda9-e836d51af0b9</string>
+      </credentialIds>
+      <ignoreMissing>false</ignoreMissing>
+    </com.cloudbees.jenkins.plugins.sshagent.SSHAgentBuildWrapper>
+  </buildWrappers>
+</project>

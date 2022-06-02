@@ -1,0 +1,105 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>Regression on mem-Benchmark driven by wit/wake</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.0.1">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+      <configVersion>1</configVersion>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>7</daysToKeep>
+        <numToKeep>15</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>freedom-metal-small</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>true</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers>
+    <hudson.triggers.TimerTrigger>
+      <spec>H H(0-7) * * *</spec>
+    </hudson.triggers.TimerTrigger>
+  </triggers>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>hostname
+env
+pwd
+
+
+export JENKINS_BUILDS_DIR=/scratch/jenkins/archived-builds
+
+# Load wit/wake modules
+. /sifive/tools/Modules/3.2.10/init/sh
+module load sifive/wake/0.17.2
+module load sifive/wit
+module load riscv-tools
+
+# Create the Jenkins build dir if it doesn&apos;t exist
+mkdir -p $JENKINS_BUILDS_DIR
+cd $JENKINS_BUILDS_DIR
+echo $PWD
+
+# Create the build directory
+mkdir -p $JOB_NAME/$BUILD_NUMBER
+cd $JOB_NAME/$BUILD_NUMBER
+echo $PWD
+
+# Initialize the workspace
+wit init workspace -a git@github.com:sifive/product-coreip-sifive.git  -a git@github.com:sifive/environment-sanmateo-sifive.git
+cd workspace
+
+
+# Initialize wake
+wake --init .
+
+# Run benchmarks on all standard cores
+# Timeout set to 12 hours
+# timeout 12h wake --no-tty test Verilator memBenchmark all standardJSONs 2&gt;error.log
+timeout 12h wake -p 10 --no-tty test Verilator memBenchmark all standardJSONs 2&gt;error.log
+
+#./product-coreip-sifive/scripts/mem_probe_standard_coreip.sh build/product-coreip-sifive
+./product-coreip-sifive/scripts/mem_latency_standard_coreip.sh build/product-coreip-sifive</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <jenkins.plugins.slack.SlackNotifier plugin="slack@2.3">
+      <baseUrl></baseUrl>
+      <teamDomain>sifive</teamDomain>
+      <authToken>P0KcFEruoxLBRNfsEgPMCuC4</authToken>
+      <authTokenCredentialId></authTokenCredentialId>
+      <botUser>false</botUser>
+      <room>#perf-analysis</room>
+      <startNotification>false</startNotification>
+      <notifySuccess>true</notifySuccess>
+      <notifyAborted>false</notifyAborted>
+      <notifyNotBuilt>false</notifyNotBuilt>
+      <notifyUnstable>false</notifyUnstable>
+      <notifyRegression>false</notifyRegression>
+      <notifyFailure>true</notifyFailure>
+      <notifyBackToNormal>false</notifyBackToNormal>
+      <notifyRepeatedFailure>false</notifyRepeatedFailure>
+      <includeTestSummary>false</includeTestSummary>
+      <includeFailedTests>false</includeFailedTests>
+      <commitInfoChoice>NONE</commitInfoChoice>
+      <includeCustomMessage>false</includeCustomMessage>
+      <customMessage></customMessage>
+    </jenkins.plugins.slack.SlackNotifier>
+  </publishers>
+  <buildWrappers/>
+</project>

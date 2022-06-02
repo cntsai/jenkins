@@ -1,0 +1,80 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>combination</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.2.1"/>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.2">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>SLURM.SMALL.023 || SLURM.SMALL.020 || SLURM.005 || SLURM.004 || SLURM.SMALL.005 || SLURM.SMALL.001 || SLURM.SMALL.000 || SLURM.SMALL.009</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>true</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers>
+    <hudson.triggers.TimerTrigger>
+      <spec>H 0 * * 1,2,3,4,5</spec>
+    </hudson.triggers.TimerTrigger>
+  </triggers>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+# for debugging
+echo $NODE_NAME
+hostname
+build_date=`date +%m-%d-%Y`
+echo &quot;build date = &lt;$build_date&gt;&quot;
+echo &quot;USER=$USER&quot;
+echo &quot;HOME=$HOME&quot;
+echo &quot;PWD=$PWD&quot;
+echo &quot;WORKSPACE=$WORKSPACE&quot;
+
+set -x
+
+fusdk_private_url=&quot;https://jenkins.internal.sifive.com/view/Tools/job/syssw-automation/job/fusdk-meta-sifive-private/buildWithParameters?&quot;
+
+
+echo &quot;===&gt; Trigger FUSDK autobuilt with sifive-fpga&quot;
+curl ${fusdk_private_url}token=FUSDKAutoBuild\&amp;FUSDK_MACHINE=sifive-fpga\&amp;META_SIFIVE_PRIVATE_BRANCH=rel/sifive-fpga/202103\&amp;FUSDK_MANIFEST=tools/manifests/sifive.xml
+
+
+#echo &quot;Trigger FUSDK autobuilt with QEMU&quot;
+#curl ${fusdk_private_url}token=FUSDKAutoBuild&amp;FUSDK_MACHINE=sifive-fpga
+
+#echo &quot;Trigger FUSDK autobuilt with Unmatched&quot;
+#curl ${fusdk_private_url}token=FUSDKAutoBuild&amp;FUSDK_MACHINE=sifive-fpga
+
+echo &quot;=== end of batch autobuild ===&quot;
+set +x</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers>
+    <hudson.plugins.timestamper.TimestamperBuildWrapper plugin="timestamper@1.12"/>
+    <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@0.7.5">
+      <colorMapName>xterm</colorMapName>
+    </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
+    <com.cloudbees.jenkins.plugins.sshagent.SSHAgentBuildWrapper plugin="ssh-agent@1.22">
+      <credentialIds>
+        <string>ad25d95a-4a30-4cc9-bda9-e836d51af0b9</string>
+      </credentialIds>
+      <ignoreMissing>false</ignoreMissing>
+    </com.cloudbees.jenkins.plugins.sshagent.SSHAgentBuildWrapper>
+  </buildWrappers>
+</project>

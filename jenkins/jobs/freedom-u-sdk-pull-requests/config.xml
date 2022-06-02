@@ -1,0 +1,91 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><flow-definition plugin="workflow-job@2.41">
+  <actions/>
+  <description>&lt;a href="https://github.com/sifive/freedom-u-sdk"&gt;freedom-u-sdk&lt;/a&gt; short tests, run on each pull request.&#13;
+&#13;
+&lt;h2&gt;OWNER: Paul Walmsley&lt;/h2&gt;</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.3"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>1</daysToKeep>
+        <numToKeep>10</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableResumeJobProperty/>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>GIT_COMMIT</name>
+          <description>Git commit to run </description>
+          <defaultValue>2021.08</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>BASE_COMMIT</name>
+          <description>If provided, a git commit to merge GIT_COMMIT into before running the regressions.</description>
+          <defaultValue>origin/master</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>PR_ID</name>
+          <description>If given will Create a link between PR and Jenkins Build</description>
+          <defaultValue>0</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>OWNER</name>
+          <description>The Owner of the Job</description>
+          <defaultValue>n/a</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.4">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>7</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers/>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@2.93">
+    <scm class="hudson.plugins.git.GitSCM" plugin="git@4.8.2">
+      <configVersion>2</configVersion>
+      <userRemoteConfigs>
+        <hudson.plugins.git.UserRemoteConfig>
+          <url>git@github.com:sifive/freedom-u-sdk.git</url>
+          <credentialsId>18352a7f-c03f-4cf2-a4a5-cad442f328d6</credentialsId>
+        </hudson.plugins.git.UserRemoteConfig>
+      </userRemoteConfigs>
+      <branches>
+        <hudson.plugins.git.BranchSpec>
+          <name>${GIT_COMMIT}</name>
+        </hudson.plugins.git.BranchSpec>
+      </branches>
+      <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+      <submoduleCfg class="empty-list"/>
+      <extensions>
+        <hudson.plugins.git.extensions.impl.ChangelogToBranch>
+          <options>
+            <compareRemote>origin</compareRemote>
+            <compareTarget>2021.08</compareTarget>
+          </options>
+        </hudson.plugins.git.extensions.impl.ChangelogToBranch>
+      </extensions>
+    </scm>
+    <scriptPath>jenkins/ci-pre-merge.Jenkinsfile</scriptPath>
+    <lightweight>false</lightweight>
+  </definition>
+  <triggers/>
+  <authToken>MyI3d9kLT0SaL1Ay3i96Kg</authToken>
+  <disabled>false</disabled>
+</flow-definition>

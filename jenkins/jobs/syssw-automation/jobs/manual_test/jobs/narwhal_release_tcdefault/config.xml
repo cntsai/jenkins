@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?><flow-definition plugin="workflow-job@1145.v7f2433caa07f">
+  <actions>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@1.9.3"/>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@1.9.3">
+      <jobProperties>
+        <string>org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty</string>
+      </jobProperties>
+      <triggers/>
+      <parameters>
+        <string>DRY_RUN</string>
+        <string>REUSE_FUSDK_BUILD</string>
+        <string>CUSTOM_TEST_CONFIG</string>
+        <string>SYNC_ONLY</string>
+        <string>CUSTOM_BUILD_CONFIG</string>
+        <string>CUSTOM_RELEASE_CONFIG</string>
+        <string>CUSTOM_GLOBAL_CONFIG</string>
+        <string>FUSDK_MACHINE_FILTER</string>
+      </parameters>
+      <options/>
+    </org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction>
+  </actions>
+  <description/>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>30</daysToKeep>
+        <numToKeep>10</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.33">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.BooleanParameterDefinition>
+          <name>SYNC_ONLY</name>
+          <description>Sync Jenkins Job configuration only, do not build anything</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>DRY_RUN</name>
+          <description>Test Jenkins pipeline and child pipeline, do not build anything</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>FUSDK_MACHINE_FILTER</name>
+          <description>To-be-test FUSDK machines</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>all</string>
+              <string>qemuriscv64</string>
+              <string>sifive-fpga</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>REUSE_FUSDK_BUILD</name>
+          <description>Reuse previous FUSDK build id and NFS_WORKSPACE</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>CUSTOM_GLOBAL_CONFIG</name>
+          <description>custom GLOBAL_CONFIG in JSON format</description>
+          <trim>false</trim>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>CUSTOM_BUILD_CONFIG</name>
+          <description>custom BUILD_CONFIG in JSON format</description>
+          <trim>false</trim>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>CUSTOM_TEST_CONFIG</name>
+          <description>custom TEST_CONFIG in JSON format</description>
+          <trim>false</trim>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>CUSTOM_RELEASE_CONFIG</name>
+          <description>custom RELEASE_CONFIG in JSON format</description>
+          <trim>false</trim>
+        </hudson.model.TextParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers/>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty>
+      <abortPrevious>false</abortPrevious>
+    </org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@2660.vb_c0412dc4e6d">
+    <scm class="hudson.plugins.git.GitSCM" plugin="git@4.10.3">
+      <configVersion>2</configVersion>
+      <userRemoteConfigs>
+        <hudson.plugins.git.UserRemoteConfig>
+          <url>ssh://git@github.com/sifive/syssw_automation_tools.git</url>
+        </hudson.plugins.git.UserRemoteConfig>
+      </userRemoteConfigs>
+      <branches>
+        <hudson.plugins.git.BranchSpec>
+          <name>main</name>
+        </hudson.plugins.git.BranchSpec>
+      </branches>
+      <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+      <gitTool>git</gitTool>
+      <submoduleCfg class="empty-list"/>
+      <extensions/>
+    </scm>
+    <scriptPath>jenkins_scripts/jenkinsfile/Matrix_Build_and_Test_FUSDK_private.jenkinsfile</scriptPath>
+    <lightweight>true</lightweight>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

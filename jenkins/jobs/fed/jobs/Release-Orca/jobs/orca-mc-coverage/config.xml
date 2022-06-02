@@ -1,0 +1,156 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><flow-definition plugin="workflow-job@1145.v7f2433caa07f">
+  <actions/>
+  <description>run coverage regression for X280 mc16 on orca branch</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>14</daysToKeep>
+        <numToKeep>-1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableResumeJobProperty/>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.33">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>GIT_COMMIT</name>
+          <description>Git commit to run </description>
+          <defaultValue>orca_mc_cov</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>CONFIG_SET</name>
+          <description>These can either be &lt;b&gt;&lt;i&gt;configs&lt;/i&gt;&lt;/b&gt;, i.e. coreip_e21 coreip_p550 etc listed in a space separated list&lt;br&gt;
+OR&lt;br&gt;
+&lt;b&gt;&lt;i&gt;config-sets&lt;/i&gt;&lt;/b&gt; defined in&lt;br&gt;
+EX:
+&lt;ul&gt;
+  &lt;li&gt;x280mc16_cov&lt;/li&gt;
+  &lt;li&gt;x280mc16_dir_cov&lt;/li&gt;
+  &lt;li&gt;x280mc16_sting_cov&lt;/li&gt;
+  &lt;li&gt;x280mc16_ecc_cov&lt;/li&gt;
+  &lt;li&gt;x280mc16_torture_cov&lt;/li&gt;
+  &lt;li&gt;x280mc16_trace_cov&lt;/li&gt;
+  &lt;li&gt;x280mc16_rit_cov&lt;/li&gt;
+  &lt;li&gt;x280mc16_bfm_cov&lt;/li&gt;
+
+&lt;/ul&gt;
+All Are Defined &lt;a href=https://github.com/sifive/federation/tree/master/specs/test-plans&gt;here&lt;/a&gt; in the various test-plans
+&lt;BR&gt;</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>x280mc16_cov</string>
+              <string>x280mc16_dir_cov</string>
+              <string>x280mc16_sting_cov</string>
+              <string>x280mc16_ecc_cov</string>
+              <string>x280mc16_torture_cov</string>
+              <string>x280mc16_trace_cov</string>
+              <string>x280mc16_rit_cov</string>
+              <string>x280mc16_bfm_cov</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>SUITE</name>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>test-nightly-coverage</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>RUNSUITE_NUM_THREADS</name>
+          <description>Select the number of threads for runsuite</description>
+          <defaultValue>1</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SITEST_JOBS</name>
+          <description>The number of jobs from each sitest instance to run, basically number of simulation jobs to run for a given config</description>
+          <defaultValue>300</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SLURM_ACCOUNT</name>
+          <description>Setting the Slurm account to bill the jobs. To see accounts that can be used please use `sshare`, but remember to only use accounts that you authorized to use.</description>
+          <defaultValue>verif_bulk</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>NODE_AGENT</name>
+          <description>Override the default jenkins agent, useful for targeting the Lambda machines</description>
+          <defaultValue>nightly_standard_agent_rhel8</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SIMSCOPE_PROJECT</name>
+          <defaultValue>master</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SIMSCOPE_COMPONENT</name>
+          <defaultValue>Nightly</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>JENKINS_TIMEOUT</name>
+          <description>Ability to decrease or increase the jenkins timeout depending on your needs, It is in hours, Default is 48hrs</description>
+          <defaultValue>48</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@2660.vb_c0412dc4e6d">
+    <scm class="hudson.plugins.git.GitSCM" plugin="git@4.10.3">
+      <configVersion>2</configVersion>
+      <userRemoteConfigs>
+        <hudson.plugins.git.UserRemoteConfig>
+          <url>git@github.com:sifive/federation.git</url>
+          <credentialsId>ad25d95a-4a30-4cc9-bda9-e836d51af0b9</credentialsId>
+        </hudson.plugins.git.UserRemoteConfig>
+      </userRemoteConfigs>
+      <branches>
+        <hudson.plugins.git.BranchSpec>
+          <name>*/orca_mc_cov</name>
+        </hudson.plugins.git.BranchSpec>
+      </branches>
+      <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+      <gitTool>Default</gitTool>
+      <submoduleCfg class="empty-list"/>
+      <extensions>
+        <hudson.plugins.git.extensions.impl.CloneOption>
+          <shallow>false</shallow>
+          <noTags>false</noTags>
+          <reference>/sifive/github-cache/federation.git</reference>
+          <timeout>60</timeout>
+          <honorRefspec>false</honorRefspec>
+        </hudson.plugins.git.extensions.impl.CloneOption>
+        <hudson.plugins.git.extensions.impl.CheckoutOption>
+          <timeout>60</timeout>
+        </hudson.plugins.git.extensions.impl.CheckoutOption>
+      </extensions>
+    </scm>
+    <scriptPath>jenkins/nightly.Jenkinsfile</scriptPath>
+    <lightweight>true</lightweight>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

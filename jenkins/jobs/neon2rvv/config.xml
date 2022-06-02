@@ -1,0 +1,78 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject plugin="workflow-multibranch@711.vdfef37cda_816">
+  <actions/>
+  <description>&lt;h1&gt;Owner: Han-Kuan&lt;/h1&gt;</description>
+  <properties>
+    <org.jenkinsci.plugins.docker.workflow.declarative.FolderConfig plugin="docker-workflow@1.28">
+      <dockerLabel></dockerLabel>
+      <registry plugin="docker-commons@1.19"/>
+    </org.jenkinsci.plugins.docker.workflow.declarative.FolderConfig>
+    <org.jenkinsci.plugins.workflow.libs.FolderLibraries plugin="workflow-cps-global-lib@564.ve62a_4eb_b_e039">
+      <libraries>
+        <org.jenkinsci.plugins.workflow.libs.LibraryConfiguration>
+          <name>frameworksCI</name>
+          <retriever class="org.jenkinsci.plugins.workflow.libs.SCMSourceRetriever">
+            <scm class="jenkins.plugins.git.GitSCMSource" plugin="git@4.10.3">
+              <id>ff3b3bdb-526a-44af-a585-d41e225154e6</id>
+              <remote>git@github.com:sifive/frameworksCI.git</remote>
+              <credentialsId>ad25d95a-4a30-4cc9-bda9-e836d51af0b9</credentialsId>
+              <traits>
+                <jenkins.plugins.git.traits.BranchDiscoveryTrait/>
+              </traits>
+            </scm>
+          </retriever>
+          <defaultVersion>b19de35fffa736eee90204a2ebbfdf978596eede</defaultVersion>
+          <implicit>false</implicit>
+          <allowVersionOverride>true</allowVersionOverride>
+          <includeInChangesets>true</includeInChangesets>
+        </org.jenkinsci.plugins.workflow.libs.LibraryConfiguration>
+      </libraries>
+    </org.jenkinsci.plugins.workflow.libs.FolderLibraries>
+  </properties>
+  <folderViews class="jenkins.branch.MultiBranchProjectViewHolder" plugin="branch-api@2.7.0">
+    <owner class="org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject" reference="../.."/>
+  </folderViews>
+  <healthMetrics>
+    <com.cloudbees.hudson.plugins.folder.health.WorstChildHealthMetric plugin="cloudbees-folder@6.708.ve61636eb_65a_5">
+      <nonRecursive>false</nonRecursive>
+    </com.cloudbees.hudson.plugins.folder.health.WorstChildHealthMetric>
+  </healthMetrics>
+  <icon class="jenkins.branch.MetadataActionFolderIcon" plugin="branch-api@2.7.0">
+    <owner class="org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject" reference="../.."/>
+  </icon>
+  <orphanedItemStrategy class="com.cloudbees.hudson.plugins.folder.computed.DefaultOrphanedItemStrategy" plugin="cloudbees-folder@6.708.ve61636eb_65a_5">
+    <pruneDeadBranches>true</pruneDeadBranches>
+    <daysToKeep>5</daysToKeep>
+    <numToKeep>-1</numToKeep>
+    <abortBuilds>false</abortBuilds>
+  </orphanedItemStrategy>
+  <triggers>
+    <com.cloudbees.hudson.plugins.folder.computed.PeriodicFolderTrigger plugin="cloudbees-folder@6.708.ve61636eb_65a_5">
+      <spec>* * * * *</spec>
+      <interval>300000</interval>
+    </com.cloudbees.hudson.plugins.folder.computed.PeriodicFolderTrigger>
+  </triggers>
+  <disabled>false</disabled>
+  <sources class="jenkins.branch.MultiBranchProject$BranchSourceList" plugin="branch-api@2.7.0">
+    <data>
+      <jenkins.branch.BranchSource>
+        <source class="jenkins.plugins.git.GitSCMSource" plugin="git@4.10.3">
+          <id>601524c0-e9df-467d-9d62-579fb062e6b6</id>
+          <remote>git@github.com:sifive/neon2rvv.git</remote>
+          <credentialsId>ad25d95a-4a30-4cc9-bda9-e836d51af0b9</credentialsId>
+          <traits>
+            <jenkins.plugins.git.traits.BranchDiscoveryTrait/>
+          </traits>
+        </source>
+        <strategy class="jenkins.branch.DefaultBranchPropertyStrategy">
+          <properties class="empty-list"/>
+        </strategy>
+      </jenkins.branch.BranchSource>
+    </data>
+    <owner class="org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject" reference="../.."/>
+  </sources>
+  <factory class="org.jenkinsci.plugins.workflow.multibranch.WorkflowBranchProjectFactory">
+    <owner class="org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject" reference="../.."/>
+    <scriptPath>Jenkinsfile</scriptPath>
+  </factory>
+</org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject>

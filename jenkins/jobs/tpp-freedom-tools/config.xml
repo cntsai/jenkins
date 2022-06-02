@@ -1,0 +1,107 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<com.cloudbees.hudson.plugins.folder.Folder plugin="cloudbees-folder@6.16">
+  <actions/>
+  <description></description>
+  <properties>
+    <com.cloudbees.hudson.plugins.folder.properties.FolderCredentialsProvider_-FolderCredentialsProperty>
+      <domainCredentialsMap class="hudson.util.CopyOnWriteMap$Hash">
+        <entry>
+          <com.cloudbees.plugins.credentials.domains.Domain plugin="credentials@2.5">
+            <specifications/>
+          </com.cloudbees.plugins.credentials.domains.Domain>
+          <java.util.concurrent.CopyOnWriteArrayList>
+            <com.cloudbees.jenkins.plugins.sshcredentials.impl.BasicSSHUserPrivateKey plugin="ssh-credentials@1.18.1">
+              <id>e437ba58-466e-4b24-a8d3-61a2e2d013af</id>
+              <description></description>
+              <username>cgsfv</username>
+              <passphrase>{AQAAABAAAAAgOro9jJLfnJ8yQw8ZDNU2A9wPATDitJs9+u6lzGOwc7uryFqUewgjmuUHj+JdGbIw}</passphrase>
+              <privateKeySource class="com.cloudbees.jenkins.plugins.sshcredentials.impl.BasicSSHUserPrivateKey$DirectEntryPrivateKeySource">
+                <privateKey>{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}</privateKey>
+              </privateKeySource>
+            </com.cloudbees.jenkins.plugins.sshcredentials.impl.BasicSSHUserPrivateKey>
+            <com.cloudbees.jenkins.plugins.sshcredentials.impl.BasicSSHUserPrivateKey plugin="ssh-credentials@1.18.1">
+              <id>250b2598-1834-47cc-a9e4-e21717eb3f04</id>
+              <description></description>
+              <username>cgsfv</username>
+              <passphrase>{AQAAABAAAAAgWO50SCTL5oKHJGfHWAzzyHTztNDho0i+xYEm3RFgUP0mukRd2KVsmtdnvOBBQSIq}</passphrase>
+              <privateKeySource class="com.cloudbees.jenkins.plugins.sshcredentials.impl.BasicSSHUserPrivateKey$DirectEntryPrivateKeySource">
+                <privateKey>{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}</privateKey>
+              </privateKeySource>
+            </com.cloudbees.jenkins.plugins.sshcredentials.impl.BasicSSHUserPrivateKey>
+          </java.util.concurrent.CopyOnWriteArrayList>
+        </entry>
+      </domainCredentialsMap>
+    </com.cloudbees.hudson.plugins.folder.properties.FolderCredentialsProvider_-FolderCredentialsProperty>
+    <org.jenkinsci.plugins.docker.workflow.declarative.FolderConfig plugin="docker-workflow@1.26">
+      <dockerLabel></dockerLabel>
+      <registry plugin="docker-commons@1.17"/>
+    </org.jenkinsci.plugins.docker.workflow.declarative.FolderConfig>
+  </properties>
+  <folderViews class="com.cloudbees.hudson.plugins.folder.views.DefaultFolderViewHolder">
+    <views>
+      <hudson.model.AllView>
+        <owner class="com.cloudbees.hudson.plugins.folder.Folder" reference="../../../.."/>
+        <name>all</name>
+        <filterExecutors>false</filterExecutors>
+        <filterQueue>false</filterQueue>
+        <properties class="hudson.model.View$PropertyList"/>
+      </hudson.model.AllView>
+      <hudson.model.ListView>
+        <owner class="com.cloudbees.hudson.plugins.folder.Folder" reference="../../../.."/>
+        <name>parameterized</name>
+        <description>Parameterized jobs</description>
+        <filterExecutors>false</filterExecutors>
+        <filterQueue>false</filterQueue>
+        <properties class="hudson.model.View$PropertyList"/>
+        <jobNames>
+          <comparator class="hudson.util.CaseInsensitiveComparator"/>
+        </jobNames>
+        <jobFilters/>
+        <columns>
+          <hudson.views.StatusColumn/>
+          <hudson.views.WeatherColumn/>
+          <hudson.views.JobColumn/>
+          <hudson.views.LastSuccessColumn/>
+          <hudson.views.LastFailureColumn/>
+          <hudson.views.LastDurationColumn/>
+          <hudson.views.BuildButtonColumn/>
+          <hudson.plugins.favorite.column.FavoriteColumn plugin="favorite@2.3.3"/>
+        </columns>
+        <includeRegex>.*--parameterized</includeRegex>
+        <recurse>false</recurse>
+      </hudson.model.ListView>
+      <hudson.model.ListView>
+        <owner class="com.cloudbees.hudson.plugins.folder.Folder" reference="../../../.."/>
+        <name>non-parameterized</name>
+        <description>Non-parameterized jobs</description>
+        <filterExecutors>false</filterExecutors>
+        <filterQueue>false</filterQueue>
+        <properties class="hudson.model.View$PropertyList"/>
+        <jobNames>
+          <comparator class="hudson.util.CaseInsensitiveComparator" reference="../../../hudson.model.ListView/jobNames/comparator"/>
+        </jobNames>
+        <jobFilters/>
+        <columns>
+          <hudson.views.StatusColumn/>
+          <hudson.views.WeatherColumn/>
+          <hudson.views.JobColumn/>
+          <hudson.views.LastSuccessColumn/>
+          <hudson.views.LastFailureColumn/>
+          <hudson.views.LastDurationColumn/>
+          <hudson.views.BuildButtonColumn/>
+          <hudson.plugins.favorite.column.FavoriteColumn plugin="favorite@2.3.3"/>
+        </columns>
+        <includeRegex>^((?!--parameterized).)*$</includeRegex>
+        <recurse>false</recurse>
+      </hudson.model.ListView>
+    </views>
+    <primaryView>all</primaryView>
+    <tabBar class="hudson.views.DefaultViewsTabBar"/>
+  </folderViews>
+  <healthMetrics>
+    <com.cloudbees.hudson.plugins.folder.health.WorstChildHealthMetric>
+      <nonRecursive>false</nonRecursive>
+    </com.cloudbees.hudson.plugins.folder.health.WorstChildHealthMetric>
+  </healthMetrics>
+  <icon class="com.cloudbees.hudson.plugins.folder.icons.StockFolderIcon"/>
+</com.cloudbees.hudson.plugins.folder.Folder>

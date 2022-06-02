@@ -1,0 +1,150 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><project>
+  <actions/>
+  <description>Run a sset of regression studies every day&#13;
+&#13;
+&lt;p&gt; Owners: Mike Schoenfelder, Jaksa Djordjevic&#13;
+Backup: Top Changwatchai</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>10</daysToKeep>
+        <numToKeep>10</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.33">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>tiny_rhel8</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers>
+    <hudson.triggers.TimerTrigger>
+      <spec>H H(0-1) * * *</spec>
+    </hudson.triggers.TimerTrigger>
+  </triggers>
+  <concurrentBuild>true</concurrentBuild>
+  <builders>
+    <hudson.plugins.parameterizedtrigger.TriggerBuilder plugin="parameterized-trigger@2.43">
+      <configs>
+        <hudson.plugins.parameterizedtrigger.BlockableBuildTriggerConfig>
+          <configs>
+            <hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+              <properties>DABBLE_BUILD=latest_func_pass
+STUDY_TYPE=full_p550n
+PERF_SLURM_ACCOUNT=perf_bulk
+PERF_SLURM_PARTITION=redhat,ubuntu_cloud
+PERF_DELTA_BEHAVIOR=ignore_no_perf_delta</properties>
+              <textParamValueOnNewLine>false</textParamValueOnNewLine>
+            </hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+          </configs>
+          <projects>dabble-custom-study</projects>
+          <condition>ALWAYS</condition>
+          <triggerWithNoParameters>false</triggerWithNoParameters>
+          <triggerFromChildProjects>false</triggerFromChildProjects>
+          <buildAllNodesWithLabel>false</buildAllNodesWithLabel>
+        </hudson.plugins.parameterizedtrigger.BlockableBuildTriggerConfig>
+      </configs>
+    </hudson.plugins.parameterizedtrigger.TriggerBuilder>
+    <hudson.plugins.parameterizedtrigger.TriggerBuilder plugin="parameterized-trigger@2.43">
+      <configs>
+        <hudson.plugins.parameterizedtrigger.BlockableBuildTriggerConfig>
+          <configs>
+            <hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+              <properties>DABBLE_BUILD=latest_func_pass
+STUDY_TYPE=full_p650o_corr
+PERF_SLURM_ACCOUNT=perf_bulk
+PERF_SLURM_PARTITION=redhat,ubuntu_cloud
+PERF_DELTA_BEHAVIOR=ignore_no_perf_delta</properties>
+              <textParamValueOnNewLine>false</textParamValueOnNewLine>
+            </hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+          </configs>
+          <projects>dabble-custom-study</projects>
+          <condition>ALWAYS</condition>
+          <triggerWithNoParameters>false</triggerWithNoParameters>
+          <triggerFromChildProjects>false</triggerFromChildProjects>
+          <buildAllNodesWithLabel>false</buildAllNodesWithLabel>
+        </hudson.plugins.parameterizedtrigger.BlockableBuildTriggerConfig>
+      </configs>
+    </hudson.plugins.parameterizedtrigger.TriggerBuilder>
+    <hudson.plugins.parameterizedtrigger.TriggerBuilder plugin="parameterized-trigger@2.43">
+      <configs>
+        <hudson.plugins.parameterizedtrigger.BlockableBuildTriggerConfig>
+          <configs>
+            <hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+              <properties>DABBLE_BUILD=latest_func_pass
+STUDY_TYPE=full_draco
+PERF_SLURM_ACCOUNT=perf_bulk
+PERF_SLURM_PARTITION=redhat,ubuntu_cloud
+PERF_DELTA_BEHAVIOR=ignore_no_perf_delta</properties>
+              <textParamValueOnNewLine>false</textParamValueOnNewLine>
+            </hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+          </configs>
+          <projects>dabble-custom-study</projects>
+          <condition>ALWAYS</condition>
+          <triggerWithNoParameters>false</triggerWithNoParameters>
+          <triggerFromChildProjects>false</triggerFromChildProjects>
+          <buildAllNodesWithLabel>false</buildAllNodesWithLabel>
+        </hudson.plugins.parameterizedtrigger.BlockableBuildTriggerConfig>
+      </configs>
+    </hudson.plugins.parameterizedtrigger.TriggerBuilder>
+  </builders>
+  <publishers>
+    <jenkins.plugins.slack.SlackNotifier plugin="slack@602.v0da_f7458945d">
+      <baseUrl/>
+      <teamDomain/>
+      <authToken/>
+      <tokenCredentialId/>
+      <botUser>false</botUser>
+      <room>#dabble-regression</room>
+      <sendAsText>false</sendAsText>
+      <iconEmoji/>
+      <username/>
+      <startNotification>false</startNotification>
+      <notifySuccess>true</notifySuccess>
+      <notifyAborted>false</notifyAborted>
+      <notifyNotBuilt>false</notifyNotBuilt>
+      <notifyUnstable>false</notifyUnstable>
+      <notifyRegression>false</notifyRegression>
+      <notifyFailure>false</notifyFailure>
+      <notifyEveryFailure>true</notifyEveryFailure>
+      <notifyBackToNormal>false</notifyBackToNormal>
+      <notifyRepeatedFailure>false</notifyRepeatedFailure>
+      <includeTestSummary>false</includeTestSummary>
+      <includeFailedTests>false</includeFailedTests>
+      <uploadFiles>false</uploadFiles>
+      <artifactIncludes/>
+      <commitInfoChoice>NONE</commitInfoChoice>
+      <includeCustomMessage>true</includeCustomMessage>
+      <customMessage>Color status only reflects status of Jenkins job for daily regression studies; it says nothing about pass rate of the studies.
+There is no git data since we're using the latest functionally passing dabble, and not building from a repo.</customMessage>
+      <customMessageSuccess/>
+      <customMessageAborted/>
+      <customMessageNotBuilt/>
+      <customMessageUnstable/>
+      <customMessageFailure/>
+    </jenkins.plugins.slack.SlackNotifier>
+  </publishers>
+  <buildWrappers/>
+</project>

@@ -1,0 +1,23 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.41">
+  <actions/>
+  <description>assign the branch of meta-sifive-private repo and it will build and test on all platform</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.3"/>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.4">
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+      <configVersion>1</configVersion>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.93">
+    <script></script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>true</disabled>
+</flow-definition>

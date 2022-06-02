@@ -1,0 +1,211 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.1.1"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>3</daysToKeep>
+        <numToKeep>3</numToKeep>
+        <artifactDaysToKeep>3</artifactDaysToKeep>
+        <artifactNumToKeep>3</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.0.2">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>small</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>true</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers>
+    <hudson.triggers.TimerTrigger>
+      <spec>H H(0-7) * * *</spec>
+    </hudson.triggers.TimerTrigger>
+  </triggers>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>hostname
+env
+pwd
+
+
+export JENKINS_BUILDS_DIR=/scratch/jenkins/archived-builds
+
+# Load wit/wake modules
+. /sifive/tools/Modules/3.2.10/init/sh
+
+python --version
+
+# Create the Jenkins build dir if it doesn&apos;t exist
+mkdir -p $JENKINS_BUILDS_DIR
+cd $JENKINS_BUILDS_DIR
+echo $PWD
+
+mkdir -p $JOB_NAME/$BUILD_NUMBER
+cd $JOB_NAME/$BUILD_NUMBER
+echo $PWD
+
+git clone git@github.com:sifive/federation.git
+cd federation
+git clone git@github.com:sifive/benchmarks.git
+export FEDERATION_GIT_HASH=`git rev-parse --short HEAD`
+export FEDERATION_ROOT=`pwd`
+export DASHBOARD_INFO=&quot;10.14.135.139,runner,kNHUUhP5AZkthSC8,8202,federation,${FEDERATION_GIT_HASH},coreip_u84_axi4,u84&quot;
+export TEST_TIMESTAMP=`date &apos;+%m%d%Y%X&apos;`
+
+
+./scripts/quick-submodule-update
+. rc.d/riscv-tools.bashrc
+
+
+sed -i &apos;/enable_coremark_score_check/d&apos;  software/tests/useries_coremark_tuned/manifest.yml
+sed -i &apos;/enable_coremark_score_check/d&apos;  software/tests/coremark/manifest.yml
+sed -i &apos;/enable_dhrystone_score_check/d&apos; software/tests/dhrystone/manifest.yml
+sed -i &apos;/sim_opts/a  \ - +verbose&apos;       software/tests/dhrystone/manifest.yml \
+                                         software/tests/useries_coremark_tuned/manifest.yml \
+                                         software/tests/useries_coremark_tuned_compliant/manifest.yml \
+                                         software/tests/coremark/manifest.yml
+
+
+
+sed &apos;s/memory_mem/dtim_mem/g&apos;  test-outlines/useries_coremark_tuned.outline &gt; test-outlines/useries_coremark_tuned_in_dtim.outline
+sed &apos;s/memory_mem/dtim_mem/g&apos;  test-outlines/useries_dhrystone.outline      &gt; test-outlines/useries_dhrystone_in_dtim.outline
+
+
+export RUNSUITE_NUM_THREADS=18
+export SITEST_JOBS=8
+
+#./scripts/run-suite --config-set=ALL --suite=test-long
+
+
+config_array=(
+  coreip_e76_fcd
+  coreip_s76_fcd
+  coreip_u54_fcd
+  coreip_u74_fcd
+  coreip_u84_axi4
+)
+
+config_in_dtim=(
+  coreip_e34_fcd
+  coreip_s54_fcd
+)
+config_in_sram=(
+  coreip_e24_fcd
+  coreip_s21_fcd
+)
+for i in ${config_array[*]} ${config_in_dtim[*]} ${config_in_sram[*]}
+do
+    BUILD_DIR=builds ./generate-build $i
+done
+
+#make -C builds/coreip_e24_fcd sim
+
+for i in ${config_array[*]} ${config_in_dtim[*]} ${config_in_sram[*]}
+do
+    make -C builds/$i sim 
+done
+
+
+COREMARK_OUTLINE=`realpath test-outlines/useries_coremark_tuned.outline`
+#COREMARK_COMPLIANT_OUTLINE=`realpath test-outlines/useries_coremark_tuned_compliant.outline`
+DHRYSTONE_OUTLINE=`realpath test-outlines/useries_dhrystone.outline`
+COREMARK_IN_DTIM_OUTLINE=`realpath test-outlines/useries_coremark_tuned_in_dtim.outline`
+DHRYSTONE_IN_DTIM_OUTLINE=`realpath test-outlines/useries_dhrystone_in_dtim.outline`
+
+BENCHMARK_IN_SRAM_OUTLINE=`realpath test-outlines/benchmark_in_sram.outline`
+for i in ${config_array[*]}
+do
+    make -C builds/$i   run-verilator TEST_OUTLINES=&quot;$COREMARK_OUTLINE $COREMARK_COMPLIANT_OUTLINE $DHRYSTONE_OUTLINE&quot; 
+done
+for i in ${config_in_dtim[*]}
+do
+    make -C builds/$i   run-verilator TEST_OUTLINES=&quot;$COREMARK_IN_DTIM_OUTLINE $DHRYSTONE_IN_DTIM_OUTLINE&quot;   
+done
+for i in ${config_in_sram[*]}
+do
+    make -C builds/$i   run-verilator TEST_OUTLINES=&quot;$BENCHMARK_IN_SRAM_OUTLINE&quot;   
+done
+
+
+virtualenv --python=python3 venv
+. venv/bin/activate
+python3 -m pip install cryptography
+python3 -m pip install pymysql
+
+platform_array=(
+  coreip_e76_fcd
+  coreip_s76_fcd
+  coreip_u54_fcd
+  coreip_u74_fcd
+  coreip_u84_axi4
+  coreip_e34_fcd
+  coreip_s54_fcd
+  coreip_e24_fcd
+  coreip_s21_fcd
+)
+ip_array=(
+e76
+s76
+u54
+u74
+u84
+e34
+s54
+e24
+s21
+)
+
+cd builds
+
+for i in `find ./ -iname simulation.err | grep coremark`
+do
+    DIRNAME=`dirname $i`
+    echo $i
+    python ../benchmarks/scripts/parse_benchmark_score.py -r $i -e $DIRNAME/program.elf -b coremark -f 1 -i 10
+done
+for i in `find ./ -iname simulation.err | grep dhrystone`
+do
+    DIRNAME=`dirname $i`
+    echo $i
+    python ../benchmarks/scripts/parse_benchmark_score.py -r $i -e $DIRNAME/program.elf -b dhrystone -f 1 -i 500
+done
+
+for ((i = 0; i &lt; ${#platform_array[@]}; i+=1 )); do
+
+	platform=${platform_array[i]}
+    ip=${ip_array[i]}
+    
+    DASHBOARD_INFO=&quot;10.14.135.139,runner,kNHUUhP5AZkthSC8,8202,federation,${FEDERATION_GIT_HASH},${platform},${ip},${TEST_TIMESTAMP}&quot;
+    
+   	err_file=`find ./ -iname simulation.err | grep coremark | grep $ip`
+    DIRNAME=`dirname $err_file`
+    python ../benchmarks/scripts/parse_benchmark_score.py -r $err_file -e $DIRNAME/program.elf -b coremark -f 1 -i 10 -d $DASHBOARD_INFO
+    
+    err_file=`find ./ -iname simulation.err | grep dhrystone | grep $ip`
+    DIRNAME=`dirname $err_file`
+    python ../benchmarks/scripts/parse_benchmark_score.py -r $err_file -e $DIRNAME/program.elf -b dhrystone -f 1 -i 500 -d $DASHBOARD_INFO
+done
+
+</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>

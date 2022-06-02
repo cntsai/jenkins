@@ -1,0 +1,294 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>Qemu tests</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.3"/>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.4">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>FUSDK_MACHINE</name>
+          <description>Pass MACHINE variable to bitbake</description>
+          <defaultValue>qemuriscv64</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>META_SIFIVE_PRIVATE_BRANCH</name>
+          <description>branch name of meta-sifive-private</description>
+          <defaultValue>rel/sifive-fpga/202103</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>FUSDK_MANIFEST</name>
+          <description>manifest.xml of meta-sifive-private</description>
+          <defaultValue>tools/manifests/sifive.xml</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>BITBAKE_PACKAGE</name>
+          <description>the package name of bitbak</description>
+          <defaultValue>demo-coreip-cli</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>NUM_OF_CORES</name>
+          <description>Decide how many cores for build.</description>
+          <defaultValue>32</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>NFS_Path</name>
+          <defaultValue>/work/jenkins/syssw</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SSTATE_Sub_Path</name>
+          <defaultValue>share-sstate</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>Build_Sub_Path</name>
+          <defaultValue>FUSDK-build</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>tests_to_run</name>
+          <defaultValue>stress-ng coremark dhrystone</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>syssw_automation_tools_branch_name</name>
+          <defaultValue>dev/maxh/add_qemu_tests</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>qemu_memory</name>
+          <defaultValue>2048</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>SLURM.SMALL.030 || SLURM.SMALL.031 || SLURM.SMALL.032   || SLURM.SMALL.033 || SLURM.SMALL.034 || SLURM.SMALL.035</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <authToken>AutoBuild_Max</authToken>
+  <triggers>
+    <hudson.triggers.SCMTrigger>
+      <spec>0 0 1 * *</spec>
+      <ignorePostCommitHooks>false</ignorePostCommitHooks>
+    </hudson.triggers.SCMTrigger>
+  </triggers>
+  <concurrentBuild>true</concurrentBuild>
+  <builders>
+    <hudson.plugins.build__timeout.BuildStepWithTimeout plugin="build-timeout@1.20">
+      <strategy class="hudson.plugins.build_timeout.impl.AbsoluteTimeOutStrategy">
+        <timeoutMinutes>120</timeoutMinutes>
+      </strategy>
+      <buildStep class="org.jenkinsci.plugins.conditionalbuildstep.singlestep.SingleConditionalBuilder" plugin="conditional-buildstep@1.4.1">
+        <condition class="org.jenkins_ci.plugins.run_condition.core.AlwaysRun" plugin="run-condition@1.5"/>
+        <buildStep class="hudson.tasks.Shell">
+          <command>#!/bin/bash
+
+# for debugging
+echo $NODE_NAME
+hostname
+build_date=`date +%m-%d-%Y`
+echo &quot;build date = &lt;$build_date&gt;&quot;
+echo &quot;USER=$USER&quot;
+echo &quot;HOME=$HOME&quot;
+echo &quot;PWD=$PWD&quot;
+echo &quot;WORKSPACE=$WORKSPACE&quot;
+echo &quot;git config --global --list&quot;
+
+real_job_name=`basename ${JOB_NAME}`
+
+git config --global --replace-all url.&quot;git@github.com:&quot;.insteadOf ssh://git@github.com/
+git config --global --add url.&quot;git@github.com:&quot;.insteadOf git://git@github.com/
+
+git config --global --list
+
+# clear and reset folder if needed
+rm -rf /scratch/syssw/automation/jenkins/$FUSDK_MACHINE
+workdir=&quot;/scratch/syssw/automation/jenkins/$FUSDK_MACHINE/$real_job_name/$BUILD_ID&quot;
+# workdir=&quot;/work/jenkins/meta_sifive_build/$FUSDK_MACHINE&quot;
+mkdir -p $workdir
+chmod a+x -R $workdir
+cd $workdir
+
+printenv
+
+echo &quot;check repo&quot;
+mkdir ~/bin
+PATH=~/bin:$PATH
+curl https://storage.googleapis.com/git-repo-downloads/repo &gt; ~/bin/repo
+chmod a+x ~/bin/repo
+
+sed -i &apos;s@#!/usr/bin/env python@#!/usr/bin/env python3@&apos; ~/bin/repo
+
+echo &quot;load python3&quot;
+export PATH=/sifive/tools/python/python/rhel8/3.9.2/bin:$PATH
+python3 --version
+#
+echo &quot;clean old meta-sifive-private&quot;
+# rm -rf .repo ./* ./build
+# rm -rf meta-sifive-private meta-clang meta-riscv meta-openembedded openembedded-core .repo
+
+# clone FUSDK
+
+echo ${META_SIFIVE_PRIVATE_BRANCH}
+repo init -u git@github.com:sifive/meta-sifive-private -b $META_SIFIVE_PRIVATE_BRANCH -m $FUSDK_MANIFEST
+repo sync
+
+cd ${workdir}
+git clone -b ${syssw_automation_tools_branch_name} git@github.com:sifive/syssw_automation_tools.git
+
+
+cd ${workdir}
+# OpenEmbedded-Core requires GCC 6 or newer to be available on the host system, download the pre-built one
+./openembedded-core/scripts/install-buildtools -r yocto-3.2_M2 -t 20200729
+. ./openembedded-core/buildtools/environment-setup-x86_64-pokysdk-linux
+
+
+
+# Setting up Build Environment
+. ./meta-sifive-private/setup.sh
+
+##make patchelf
+cd ${workdir}
+git clone git@github.com:NixOS/patchelf.git
+cd patchelf
+./bootstrap.sh
+./configure
+make
+##
+
+
+rm -rf $workdir/build/tmp-glibc/deploy/images/$FUSDK_MACHINE
+mkdir -p $workdir/build/tmp-glibc/deploy/images/$FUSDK_MACHINE
+
+mkdir -p $workdir/build/tmp-glibc/deploy/images/$FUSDK_MACHINE/
+mkdir -p $workdir/build/tmp-glibc/work/x86_64-linux/qemu-helper-native/
+cp -f $NFS_Path/$Build_Sub_Path/$FUSDK_MACHINE/Image*.bin           $workdir/build/tmp-glibc/deploy/images/$FUSDK_MACHINE/
+cp -f $NFS_Path/$Build_Sub_Path/$FUSDK_MACHINE/fw*.elf              $workdir/build/tmp-glibc/deploy/images/$FUSDK_MACHINE/
+cp -f $NFS_Path/$Build_Sub_Path/$FUSDK_MACHINE/demo*.ext4           $workdir/build/tmp-glibc/deploy/images/$FUSDK_MACHINE/
+cp -f $NFS_Path/$Build_Sub_Path/$FUSDK_MACHINE/demo*.conf           $workdir/build/tmp-glibc/deploy/images/$FUSDK_MACHINE/
+cp -rf $NFS_Path/$Build_Sub_Path/$FUSDK_MACHINE/qemu-native/  		$workdir/build/tmp-glibc/work/x86_64-linux/qemu-helper-native/
+cp -rf $NFS_Path/$Build_Sub_Path/$FUSDK_MACHINE/sysroots			$workdir/build/tmp-glibc/
+
+#tree $workdir/build/tmp-glibc/work/x86_64-linux/qemu-helper-native/
+mv $workdir/build/tmp-glibc/work/x86_64-linux/qemu-helper-native/qemu-native/	$workdir/build/tmp-glibc/work/x86_64-linux/qemu-helper-native/1.0-r1
+mv $workdir/build/tmp-glibc/sysroots/											$workdir/build/tmp-glibc/sysroots-uninative/
+#/build/tmp-glibc/work/x86_64-linux/qemu-helper-native/1.0-r1/recipe-sysroot-native/usr/bin/qemu-system-riscv64
+
+
+##run patchelf
+set -x
+qemu_interpreter=`${workdir}/patchelf/src/patchelf --print-interpreter ${workdir}/build/tmp-glibc/work/x86_64-linux/qemu-helper-native/1.0-r1/recipe-sysroot-native/usr/bin/qemu-system-riscv64`
+qemu_new_interpreter=`echo ${qemu_interpreter} |  sed &quot;s@.*\(build.*\)@${workdir}/\1@&quot;`
+
+cp ${workdir}/build/tmp-glibc/work/x86_64-linux/qemu-helper-native/1.0-r1/recipe-sysroot-native/usr/bin/qemu-system-riscv64 ${workdir}/build/tmp-glibc/work/x86_64-linux/qemu-helper-native/1.0-r1/recipe-sysroot-native/usr/bin/qemu-system-riscv64-orig
+${workdir}/patchelf/src/patchelf --print-interpreter ${workdir}/build/tmp-glibc/work/x86_64-linux/qemu-helper-native/1.0-r1/recipe-sysroot-native/usr/bin/qemu-system-riscv64
+${workdir}/patchelf/src/patchelf --print-rpath ${workdir}/build/tmp-glibc/work/x86_64-linux/qemu-helper-native/1.0-r1/recipe-sysroot-native/usr/bin/qemu-system-riscv64
+${workdir}/patchelf/src/patchelf --print-soname ${workdir}/build/tmp-glibc/work/x86_64-linux/qemu-helper-native/1.0-r1/recipe-sysroot-native/usr/bin/qemu-system-riscv64
+${workdir}/patchelf/src/patchelf --set-interpreter ${qemu_new_interpreter} ${workdir}/build/tmp-glibc/work/x86_64-linux/qemu-helper-native/1.0-r1/recipe-sysroot-native/usr/bin/qemu-system-riscv64
+${workdir}/patchelf/src/patchelf --set-rpath &quot;\$ORIGIN/../lib:\$ORIGIN/../../lib:\$ORIGIN/../lib:${workdir}/build/tmp-glibc/sysroots-uninative/x86_64-linux/lib&quot; ${workdir}/build/tmp-glibc/work/x86_64-linux/qemu-helper-native/1.0-r1/recipe-sysroot-native/usr/bin/qemu-system-riscv64
+${workdir}/patchelf/src/patchelf --add-needed &apos;libdl.so.2&apos; ${workdir}/build/tmp-glibc/work/x86_64-linux/qemu-helper-native/1.0-r1/recipe-sysroot-native/usr/bin/qemu-system-riscv64
+${workdir}/patchelf/src/patchelf --add-needed &apos;librt.so.1&apos; ${workdir}/build/tmp-glibc/work/x86_64-linux/qemu-helper-native/1.0-r1/recipe-sysroot-native/usr/bin/qemu-system-riscv64
+${workdir}/patchelf/src/patchelf --add-needed &apos;libresolv.so.2&apos; ${workdir}/build/tmp-glibc/work/x86_64-linux/qemu-helper-native/1.0-r1/recipe-sysroot-native/usr/bin/qemu-system-riscv64
+
+ldd ${workdir}/build/tmp-glibc/work/x86_64-linux/qemu-helper-native/1.0-r1/recipe-sysroot-native/usr/bin/qemu-system-riscv64
+#strace ${workdir}/build/tmp-glibc/work/x86_64-linux/qemu-helper-native/1.0-r1/recipe-sysroot-native/usr/bin/qemu-system-riscv64
+
+set +x
+##
+
+
+rm ${WORKSPACE}/*.result
+
+rm $NFS_Path/$Build_Sub_Path/$FUSDK_MACHINE/test_env
+touch $NFS_Path/$Build_Sub_Path/$FUSDK_MACHINE/test_env
+echo test_id: $BUILD_ID &gt;&gt; $NFS_Path/$Build_Sub_Path/$FUSDK_MACHINE/test_env
+echo test_cases: $tests_to_run &gt;&gt; $NFS_Path/$Build_Sub_Path/$FUSDK_MACHINE/test_env
+echo test_machine: $FUSDK_MACHINE &gt;&gt; $NFS_Path/$Build_Sub_Path/$FUSDK_MACHINE/test_env
+
+sed -i &quot;s/qb_mem.*/qb_mem = -m ${qemu_memory}/&quot; $workdir/build/tmp-glibc/deploy/images/$FUSDK_MACHINE/demo-coreip-cli-qemuriscv64.qemuboot.conf
+
+
+cd ${workdir}/syssw_automation_tools/automation_tests
+chmod 755 combine_tests.sh
+set -x
+./combine_tests.sh
+result_of_combine_tests=$?
+
+export qemu_config=`cat *_log | grep &quot;runqemu - INFO - Running&quot; | tail -1`
+
+echo ${qemu_config}
+for i in ${WORKSPACE}/*.result
+do
+        echo $i
+        sed -i &quot;0,/^/i ${qemu_config}&quot; ${i}
+done
+
+mkdir -p $NFS_Path/$Build_Sub_Path/$FUSDK_MACHINE/test_results
+cp ${WORKSPACE}/*.result $NFS_Path/$Build_Sub_Path/$FUSDK_MACHINE/test_results
+
+
+
+kill -9 ${nbd_server_pid}
+
+if [ ${result_of_combine_tests} -eq 0 ];then
+rm -rf /scratch/syssw/automation/jenkins/$FUSDK_MACHINE/$real_job_name
+fi
+
+echo &quot;overall situation: ${result_of_combine_tests}&quot;
+exit ${result_of_combine_tests}</command>
+          <configuredLocalRules/>
+        </buildStep>
+        <runner class="org.jenkins_ci.plugins.run_condition.BuildStepRunner$Fail" plugin="run-condition@1.5"/>
+      </buildStep>
+      <operationList>
+        <hudson.plugins.build__timeout.operations.AbortOperation/>
+      </operationList>
+    </hudson.plugins.build__timeout.BuildStepWithTimeout>
+  </builders>
+  <publishers>
+    <hudson.tasks.ArtifactArchiver>
+      <artifacts>*result</artifacts>
+      <allowEmptyArchive>false</allowEmptyArchive>
+      <onlyIfSuccessful>false</onlyIfSuccessful>
+      <fingerprint>false</fingerprint>
+      <defaultExcludes>true</defaultExcludes>
+      <caseSensitive>true</caseSensitive>
+      <followSymlinks>false</followSymlinks>
+    </hudson.tasks.ArtifactArchiver>
+  </publishers>
+  <buildWrappers>
+    <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@1.0.0">
+      <colorMapName>xterm</colorMapName>
+    </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
+    <com.cloudbees.jenkins.plugins.sshagent.SSHAgentBuildWrapper plugin="ssh-agent@1.22">
+      <credentialIds>
+        <string>ad25d95a-4a30-4cc9-bda9-e836d51af0b9</string>
+      </credentialIds>
+      <ignoreMissing>false</ignoreMissing>
+    </com.cloudbees.jenkins.plugins.sshagent.SSHAgentBuildWrapper>
+    <hudson.plugins.timestamper.TimestamperBuildWrapper plugin="timestamper@1.13"/>
+  </buildWrappers>
+</project>

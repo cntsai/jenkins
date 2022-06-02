@@ -1,0 +1,249 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><project>
+  <actions/>
+  <description>FUSDK builder (dev version)&#13;
+&#13;
+&lt;p&gt;&lt;b&gt;Owner:&lt;/b&gt;&lt;br&gt;&#13;
+Software Validation Team: Lewis Lu (lewis.lu@sifive.com)&lt;br&gt;&#13;
+System Software Team: Max Hsu (max.hsu@sifive.com)&lt;br&gt;</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>30</daysToKeep>
+        <numToKeep>-1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.33">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.BooleanParameterDefinition>
+          <name>SYNC_ONLY</name>
+          <description>Do nothing.</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>FUSDK_MACHINE</name>
+          <description>Pass MACHINE variable to bitbake</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>NFS_WORKSPACE</name>
+          <description>The NFS workspace specified by parent project.</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>NFS_Path</name>
+          <defaultValue>/work/jenkins/syssw</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>GLOBAL_CONFIG</name>
+          <trim>false</trim>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>BUILD_CONFIG</name>
+          <description>JSON Build Configuration</description>
+          <trim>false</trim>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>DRY_RUN</name>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>TOP_BUILD_NAME</name>
+          <defaultValue>(no upstream)</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>syssw-fusdk-build</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>true</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+# IT's policy:
+# https://sifive.atlassian.net/wiki/spaces/ENG/pages/43060928/Jenkins+CI+Tool
+
+echo "[INFO] ${NODE_NAME}"
+echo "[INFO] $(hostname)"
+echo "[INFO] $(date +%m-%d-%Y)"
+
+if [ "$SYNC_ONLY" == "true" ]; then
+    exit 0
+fi
+
+if [ "$DRY_RUN" == "true" ]; then
+    exit 0
+fi
+
+# Fix git clone problem caused by git://
+# such as git://github.com/htop-dev/htop.git
+#git config --global url.ssh://git@github.com/.insteadOf git://github.com/
+git config --global --unset-all url.git@github.com:.insteadOf
+git config --global url.ssh://git@github.com/.insteadOf git://github.com/
+git config --global --add url.ssh://git@github.com/.insteadOf git://git@github.com/
+git config --global --add url.ssh://git@github.com/.insteadOf https://github.com/
+
+
+# for debugging
+
+build_date=`date +%m-%d-%Y`
+echo "[DEBUG] build date = &lt;$build_date&gt;"
+echo "[DEBUG] USER=$USER"
+echo "[DEBUG] HOME=$HOME"
+echo "[DEBUG] PWD=$PWD"
+echo "[DEBUG] WORKSPACE=$WORKSPACE"
+echo "[DEBUG] git config --global --list"
+echo "[DEBUG] lsb_release $(lsb_release -a)"
+
+##
+#set -x
+
+#sleep_time=`expr "$BUILD_ID" % "20"`
+#sleep_time=`expr "$sleep_time" '*' "50"`
+
+#sleep $sleep_time
+
+#git config --global --replace-all url."git@github.com:".insteadOf ssh://git@github.com/
+#git config --global --add url."git@github.com:".insteadOf git://git@github.com/
+
+#git config --global --list
+
+
+#mkdir -p $WORKSPACE/$BUILD_ID
+#cd $WORKSPACE/$BUILD_ID
+#ls
+
+#set +x
+syssw_automation_tools_branch_name=$(echo "${GLOBAL_CONFIG}" | jq -r ".syssw_automation_tools_branch_name")
+
+if [ ! -d "syssw_automation_tools" ]; then
+    git clone -b ${syssw_automation_tools_branch_name} git@github.com:sifive/syssw_automation_tools.git
+else
+    (cd syssw_automation_tools; git fetch --all -p; git reset --hard origin/${syssw_automation_tools_branch_name})
+fi
+
+./syssw_automation_tools/jenkins_scripts/jobs/Build_FUSDK_private.sh
+exit_status=$?
+
+#rm -rf $WORKSPACE/$BUILD_ID
+
+exit ${exit_status}</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.plugins.logparser.LogParserPublisher plugin="log-parser@2.2">
+      <unstableOnWarning>true</unstableOnWarning>
+      <failBuildOnError>true</failBuildOnError>
+      <showGraphs>true</showGraphs>
+      <parsingRulesPath>/var/lib/jenkins/plugins/log-parser/square_brackets_log.txt</parsingRulesPath>
+      <useProjectRule>false</useProjectRule>
+    </hudson.plugins.logparser.LogParserPublisher>
+    <hudson.tasks.junit.JUnitResultArchiver plugin="junit@1.54">
+      <testResults>report_xml/*.xml</testResults>
+      <keepLongStdio>true</keepLongStdio>
+      <healthScaleFactor>1.0</healthScaleFactor>
+      <allowEmptyResults>true</allowEmptyResults>
+      <skipPublishingChecks>false</skipPublishingChecks>
+      <checksName/>
+      <skipMarkingBuildUnstable>false</skipMarkingBuildUnstable>
+    </hudson.tasks.junit.JUnitResultArchiver>
+    <io.jenkins.plugins.analysis.core.steps.IssuesRecorder plugin="warnings-ng@9.11.1">
+      <analysisTools>
+        <io.jenkins.plugins.analysis.warnings.Gcc4>
+          <id/>
+          <name/>
+          <jenkins plugin="plugin-util-api@2.14.0"/>
+          <pattern>build/tmp-glibc/work/sifive_fpga-oe-linux/**/temp/log.do_compile build/tmp-glibc/work/qemuriscv64-oe-linux/**/temp/log.do_compile</pattern>
+          <reportEncoding/>
+          <skipSymbolicLinks>false</skipSymbolicLinks>
+        </io.jenkins.plugins.analysis.warnings.Gcc4>
+      </analysisTools>
+      <sourceCodeEncoding/>
+      <sourceDirectory/>
+      <sourceDirectories/>
+      <ignoreQualityGate>false</ignoreQualityGate>
+      <ignoreFailedBuilds>true</ignoreFailedBuilds>
+      <failOnError>false</failOnError>
+      <healthy>0</healthy>
+      <unhealthy>0</unhealthy>
+      <minimumSeverity plugin="analysis-model-api@10.9.3">
+        <name>LOW</name>
+      </minimumSeverity>
+      <filters/>
+      <isEnabledForFailure>false</isEnabledForFailure>
+      <isAggregatingResults>false</isAggregatingResults>
+      <isBlameDisabled>false</isBlameDisabled>
+      <skipPublishingChecks>false</skipPublishingChecks>
+      <publishAllIssues>false</publishAllIssues>
+      <qualityGates/>
+      <trendChartType>AGGREGATION_TOOLS</trendChartType>
+      <scm/>
+    </io.jenkins.plugins.analysis.core.steps.IssuesRecorder>
+  </publishers>
+  <buildWrappers>
+    <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.40">
+      <deleteDirs>false</deleteDirs>
+      <cleanupParameter/>
+      <externalDelete/>
+      <disableDeferredWipeout>false</disableDeferredWipeout>
+    </hudson.plugins.ws__cleanup.PreBuildCleanup>
+    <org.jenkinsci.plugins.credentialsbinding.impl.SecretBuildWrapper plugin="credentials-binding@1.27.1">
+      <bindings>
+        <org.jenkinsci.plugins.credentialsbinding.impl.StringBinding>
+          <credentialsId>bab094ff-ed07-4f37-ab33-67803368e526</credentialsId>
+          <variable>SIFIVE_BOT</variable>
+        </org.jenkinsci.plugins.credentialsbinding.impl.StringBinding>
+      </bindings>
+    </org.jenkinsci.plugins.credentialsbinding.impl.SecretBuildWrapper>
+    <hudson.plugins.build__timeout.BuildTimeoutWrapper plugin="build-timeout@1.20">
+      <strategy class="hudson.plugins.build_timeout.impl.AbsoluteTimeOutStrategy">
+        <timeoutMinutes>480</timeoutMinutes>
+      </strategy>
+      <operationList>
+        <hudson.plugins.build__timeout.operations.AbortOperation/>
+        <hudson.plugins.build__timeout.operations.WriteDescriptionOperation>
+          <description>${TOP_BUILD_NAME} (TIMEOUT)</description>
+        </hudson.plugins.build__timeout.operations.WriteDescriptionOperation>
+      </operationList>
+    </hudson.plugins.build__timeout.BuildTimeoutWrapper>
+    <hudson.plugins.timestamper.TimestamperBuildWrapper plugin="timestamper@1.17"/>
+    <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@1.0.1">
+      <colorMapName>xterm</colorMapName>
+    </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
+    <org.jenkinsci.plugins.buildnamesetter.BuildNameSetter plugin="build-name-setter@2.2.0">
+      <template>#${BUILD_NUMBER}:${FUSDK_MACHINE}</template>
+      <descriptionTemplate>${TOP_BUILD_NAME}&lt;br&gt;${NODE_NAME}</descriptionTemplate>
+      <runAtStart>true</runAtStart>
+      <runAtEnd>false</runAtEnd>
+    </org.jenkinsci.plugins.buildnamesetter.BuildNameSetter>
+  </buildWrappers>
+</project>

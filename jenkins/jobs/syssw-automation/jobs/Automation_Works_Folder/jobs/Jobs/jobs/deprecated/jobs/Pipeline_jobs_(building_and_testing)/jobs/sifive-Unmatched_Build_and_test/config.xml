@@ -1,0 +1,120 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.40">
+  <actions>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@1.8.4"/>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@1.8.4">
+      <jobProperties/>
+      <triggers/>
+      <parameters/>
+      <options/>
+    </org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction>
+  </actions>
+  <description>Build FUSDK with sifive-Unmatched option and test on Unmatched board</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.2.1"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>7</daysToKeep>
+        <numToKeep>-1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <org.jvnet.jenkins.plugins.nodelabelparameter.LabelParameterDefinition plugin="nodelabelparameter@1.8.0">
+          <name>LABEL</name>
+          <description>You can target a specific Agent by specifying the unique label associated with that Agent (e.g. &apos;delta00&apos;)</description>
+          <defaultValue>tiny||slurm_agent</defaultValue>
+          <allNodesMatchingLabel>false</allNodesMatchingLabel>
+          <triggerIfResult>allCases</triggerIfResult>
+          <nodeEligibility class="org.jvnet.jenkins.plugins.nodelabelparameter.node.AllNodeEligibility"/>
+        </org.jvnet.jenkins.plugins.nodelabelparameter.LabelParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>BUILD_MACHINE_NAME</name>
+          <description></description>
+          <defaultValue>sifive-fpga</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>FUSDK_branch_name</name>
+          <description></description>
+          <defaultValue></defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.2">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers/>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.90">
+    <script>#!groovy
+
+stage_result = [:]
+
+pipeline{
+
+    agent { node (env.label) }
+    stages{
+        stage(&quot;Build FUSDK sifive-fpga&quot;) {
+            //build job: &apos;Tools/syssw-automation%2Ffusdk-meta-sifive-private&apos;, parameters: [[string(name: &apos;FUSDK_MACHINE&apos;, value: &apos;sifive-fpga&apos;)], [string(name: &apos;META_SIFIVE_PRIVATE_BRANCH&apos;, value: &apos;rel/sifive-fpga/202103&apos;)], [string(name: &apos;FUSDK_MANIFEST&apos;, value: &apos;tools/manifests/sifive.xml&apos;)]], propagate: false
+            //build job: &apos;syssw-automation/fusdk_meta-sifive-private_Max_testing&apos;, parameters: [string(name: &apos;FUSDK_MACHINE&apos;, value: ${BUILD_MACHINE_NAME} ), string(name: &apos;META_SIFIVE_PRIVATE_BRANCH&apos;, value: ${FUSDK_branch_name} ), string(name: &apos;FUSDK_MANIFEST&apos;, value: &apos;tools/manifests/sifive.xml&apos;), string(name: &apos;BITBAKE_PACKAGE&apos;, value: &apos;demo-coreip-cli&apos;)], propagate: true
+            steps{
+                script{
+                    try{
+                        build job: &apos;syssw-automation/parallel_test/&apos; ,propagate: true
+                        build job: &apos;syssw-automation/parallel_test/&apos; ,parameters: [string(name: &apos;ECHO STUFF&apos;, value: &apos;WOWA&apos;)] 
+                        stage_result.Build_Sifive_FPGA = true
+                    }
+                    catch(Exception e){
+                        currentBuild.result = &apos;FAILURE&apos;
+                        stage_result.Build_Sifive_FPGA = false
+                        error(&quot;${STAGE_NAME} failed!&quot;)
+                    }
+                }
+            }
+        } // stage checkout
+        stage(&apos;Run sifive-fpga test on epsilon02&apos;){
+            when{
+                expression{(stage_result.Build_Sifive_FPGA == true)}
+            }
+            steps{
+                script{
+                    try{
+                        build job: &apos;syssw-automation/parallel_test/&apos; ,propagate: true
+                        build job: &apos;syssw-automation/parallel_teeest/&apos; ,parameters: [string(name: &apos;ECHO STUFF&apos;, value: &apos;WOWA&apos;)] 
+                        stage_result.Test_on_FPGA = true
+                    }
+                    catch(Exception e){
+                        currentBuild.result = &apos;FAILURE&apos;
+                        stage_result.Test_on_FPGA = false
+                        error(&quot;${STAGE_NAME} failed!&quot;)
+                    }
+                }
+            }
+        }
+    }
+
+    post{
+        failure{
+            slackSend channel: &apos;C02A1MFSUU9&apos;, color: &apos;#FF0000&apos;, message: &quot;Job Failed  &apos; ${ BUILD_MACHINE_NAME} ${env.JOB_NAME} [${env.BUILD_NUMBER}]&apos; (${env.BUILD_URL}  ${stage_result})&quot;
+        }
+
+    }
+}</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

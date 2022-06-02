@@ -1,0 +1,107 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.40">
+  <actions/>
+  <description>Clean up all archived builds more than a week old on the Slurm Cloud machines</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.1.1"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>10</daysToKeep>
+        <numToKeep>-1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty/>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableResumeJobProperty/>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.0.3">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+      <configVersion>1</configVersion>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers>
+        <hudson.triggers.TimerTrigger>
+          <spec>H H(3-4) * * *</spec>
+        </hudson.triggers.TimerTrigger>
+      </triggers>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.83">
+    <script>def cleanUpArchivedBuilds(nodename, days_old=1) {
+    def ret = 1
+    def ssh = &quot;/usr/bin/ssh -o StrictHostKeyChecking=no $nodename&quot;
+    def srun = &quot;/usr/bin/srun -p cloud -w $nodename --chdir /tmp --mem-per-cpu 1G --time 00:90:00&quot;
+    env.DAYS_BACK=&quot;$days_old&quot;
+
+    sh &apos;echo $USER@$HOSTNAME: Waiting for Cloud Machine to be brought up...&apos;
+    ret = sh(script:&quot;$srun -- /sifive/tools/sifive/jenkins-utils/tools/clean-jenkins-work.bash&quot;, returnStatus: true)
+    if (ret != 0) {
+        def err_msg = &quot;Clean-Cloud Builds Failed for [$nodename]&quot;   
+        msg(err_msg, &apos;#ff0000&apos;, env)
+        error err_msg
+    }
+}
+
+def msg(subJobName, color, env) {
+    def host = sh(script: &apos;echo $HOSTNAME&apos;, returnStdout: true)
+    host = host.trim()
+    msg = &quot;${host}: &apos;${subJobName}&apos; (${env.BUILD_URL}consoleFull)&quot;
+    slackSend channel: &quot;#jenkins-alerts&quot;, color: &quot;${color}&quot;, notifyCommitters: true, message: &quot;${msg}&quot;
+}
+
+// FIXME: This node list should be generated programatically to ensure that
+// it is consistent with active nodes in the standard partition.
+nodes = [
+  &apos;theta00&apos;,
+  &apos;theta01&apos;,
+  &apos;theta02&apos;,
+  &apos;theta03&apos;,
+  &apos;theta04&apos;,
+  &apos;theta05&apos;,
+  &apos;theta06&apos;,
+  &apos;theta07&apos;,
+  &apos;theta08&apos;,
+  &apos;theta09&apos;,
+  &apos;theta10&apos;,
+  &apos;theta11&apos;,
+  &apos;theta12&apos;,
+  &apos;theta13&apos;,
+  &apos;theta14&apos;,
+  &apos;theta15&apos;,
+  &apos;theta16&apos;,
+  &apos;theta17&apos;,
+  // &apos;theta18&apos;, // Contractor Druvg is using this machine dedicated for now
+  &apos;theta19&apos;,
+  &apos;theta20&apos;,
+]
+
+stage(&apos;Clean Local Disk&apos;) {
+    def nodeBranch = [:]
+
+    nodes.each { nodeName -&gt;
+        nodeBranch[&quot;Clean $nodeName&quot;] = {
+            timestamps {
+                stage(&quot;Clean $nodeName&quot;) {
+                    timeout(time: 3, unit: &apos;HOURS&apos;) {
+                        node(&apos;clean_builds&apos;) {
+                            cleanUpArchivedBuilds(nodeName)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    parallel(nodeBranch)
+}</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>true</disabled>
+</flow-definition>

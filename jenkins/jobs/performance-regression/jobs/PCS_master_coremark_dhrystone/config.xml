@@ -1,0 +1,156 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>Regression on Benchmark Scores driven by wit/wake</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.1.1"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>7</daysToKeep>
+        <numToKeep>7</numToKeep>
+        <artifactDaysToKeep>7</artifactDaysToKeep>
+        <artifactNumToKeep>7</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.0.2">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+  </properties>
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@4.3.0">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <name>freedom-e-sdk-infra</name>
+        <url>git@github.com:sifive/product-coreip-sifive.git</url>
+        <credentialsId>ad25d95a-4a30-4cc9-bda9-e836d51af0b9</credentialsId>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>*/master</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+    <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+    <submoduleCfg class="list"/>
+    <extensions/>
+  </scm>
+  <assignedNode>small</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>true</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers>
+    <hudson.triggers.TimerTrigger>
+      <spec>H H(0-7) * * *</spec>
+    </hudson.triggers.TimerTrigger>
+  </triggers>
+  <concurrentBuild>false</concurrentBuild>
+  <customWorkspace>/scratch/jenkins/archived-builds/${JOB_NAME}</customWorkspace>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>hostname
+env
+pwd
+
+export PATH_TO_PRODUCT_COREIP_SIFIVE=$(realpath .)
+export PCS_GIT_HASH=`git  rev-parse --short HEAD`
+
+export JENKINS_BUILDS_DIR=/scratch/jenkins/archived-builds
+#export LC_CTYPE=en_US.UTF-8
+
+# Load wit/wake modules
+. /sifive/tools/Modules/3.2.10/init/sh
+module load sifive/wake/0.17.2
+module load sifive/wit/0.12.0
+module load riscv-tools
+
+# Create the Jenkins build dir if it doesn&apos;t exist
+mkdir -p $JENKINS_BUILDS_DIR
+cd $JENKINS_BUILDS_DIR
+echo $PWD
+
+# Create the build directory
+mkdir -p $JOB_NAME/$BUILD_NUMBER
+cd $JOB_NAME/$BUILD_NUMBER
+echo $PWD
+
+# Initialize the workspace
+wit init workspace -a $PATH_TO_PRODUCT_COREIP_SIFIVE -a git@github.com:sifive/environment-sanmateo-sifive.git
+cd workspace
+
+# Initialize wake
+wake --init .
+
+# Run benchmarks on all standard cores
+# Timeout set to 12 hours
+#timeout 12h wake -p10 --no-tty test Verilator allSDKBenchmarks all standardJSONs 2&gt;error.log
+
+wake -p10 --no-tty -x &apos;test Verilator allSDKBenchmarks standardCore &quot;e20&quot;&apos;
+wake -p10 --no-tty -x &apos;test Verilator allSDKBenchmarks standardCore &quot;e21&quot;&apos;
+wake -p10 --no-tty -x &apos;test Verilator allSDKBenchmarks standardCore &quot;s21&quot;&apos;
+wake -p10 --no-tty -x &apos;test Verilator allSDKBenchmarks standardCore &quot;e24&quot;&apos;
+wake -p10 --no-tty -x &apos;test Verilator allSDKBenchmarks standardCore &quot;e31&quot;&apos;
+wake -p10 --no-tty -x &apos;test Verilator allSDKBenchmarks standardCore &quot;e34&quot;&apos;
+wake -p10 --no-tty -x &apos;test Verilator allSDKBenchmarks standardCore &quot;s51&quot;&apos;
+wake -p10 --no-tty -x &apos;test Verilator allSDKBenchmarks standardCore &quot;u52&quot;&apos;
+wake -p10 --no-tty -x &apos;test Verilator allSDKBenchmarks standardCore &quot;s54&quot;&apos;
+wake -p10 --no-tty -x &apos;test Verilator allSDKBenchmarks standardCore &quot;u54&quot;&apos;
+wake -p10 --no-tty -x &apos;test Verilator allSDKBenchmarks standardCore &quot;u54mc&quot;&apos;
+wake -p10 --no-tty -x &apos;test Verilator allSDKBenchmarks standardCore &quot;u74&quot;&apos;
+wake -p10 --no-tty -x &apos;test Verilator allSDKBenchmarks standardCore &quot;u74mc&quot;&apos;
+wake -p10 --no-tty -x &apos;test Verilator allSDKBenchmarks standardCore &quot;e76&quot;&apos;
+wake -p10 --no-tty -x &apos;test Verilator allSDKBenchmarks standardCore &quot;e76mc&quot;&apos;
+wake -p10 --no-tty -x &apos;test Verilator allSDKBenchmarks standardCore &quot;s76&quot;&apos;
+wake -p10 --no-tty -x &apos;test Verilator allSDKBenchmarks standardCore &quot;s76mc&quot;&apos;
+wake -p10 --no-tty -x &apos;test Verilator allSDKBenchmarks standardCore &quot;u77&quot;&apos;
+wake -p10 --no-tty -x &apos;test Verilator allSDKBenchmarks standardCore &quot;s84&quot;&apos;
+wake -p10 --no-tty -x &apos;test Verilator allSDKBenchmarks standardCore &quot;u81&quot;&apos;
+wake -p10 --no-tty -x &apos;test Verilator allSDKBenchmarks standardCore &quot;u84&quot;&apos;
+wake -p10 --no-tty -x &apos;test Verilator allSDKBenchmarks standardCore &quot;u84mc&quot;&apos;
+
+# Measure and compare scores against their expected value
+bash ./$JOB_BASE_NAME/scripts/score_benchmarks_standard_coreip build/$JOB_BASE_NAME/ 0.05
+
+git clone git@github.com:sifive/benchmarks.git
+
+export TEST_TIMESTAMP=`date &apos;+%m%d%Y%X&apos;`
+
+
+module load riscv-tools
+
+virtualenv --python=python3 venv
+. venv/bin/activate
+python3 -m pip install cryptography
+python3 -m pip install pymysql
+
+for core_name in `ls build/$JOB_BASE_NAME`
+do
+	export DASHBOARD_INFO=&quot;10.14.135.139,runner,kNHUUhP5AZkthSC8,8202,PCS,${PCS_GIT_HASH},coreip_${core_name}_,${core_name}&quot;
+	
+    target_build_dir=build/${JOB_BASE_NAME}/${core_name}
+    
+    coremark_out=${target_build_dir}/sim/execute/Verilator/coremark/sim.err
+   	coremark_elf=${target_build_dir}/freedom-e-sdk/software/coremark/release/coremark.elf
+    
+   	dhrystone_out=${target_build_dir}/sim/execute/Verilator/dhrystone/sim.err
+    dhrystone_elf=${target_build_dir}/freedom-e-sdk/software/dhrystone/release/dhrystone.elf
+
+	python3 ./benchmarks/scripts/parse_benchmark_score.py -b coremark  -f 1 -i 5    -r ${coremark_out} -e ${coremark_elf}   --dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP&quot;
+	python3 ./benchmarks/scripts/parse_benchmark_score.py -b dhrystone -f 1 -i 2000 -r ${dhrystone_out} -e ${dhrystone_elf} --dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP&quot;
+    
+done</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>

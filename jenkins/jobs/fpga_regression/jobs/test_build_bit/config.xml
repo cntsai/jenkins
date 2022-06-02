@@ -1,0 +1,179 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><flow-definition plugin="workflow-job@1145.v7f2433caa07f">
+  <actions>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@1.9.3"/>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@1.9.3">
+      <jobProperties/>
+      <triggers/>
+      <parameters/>
+      <options/>
+    </org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction>
+  </actions>
+  <description>Generate FPGA bitstream, and call fpga emulation jobs to run regression</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>10</daysToKeep>
+        <numToKeep>-1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.33">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>BUILD_TARGET</name>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>p550_vcu118</string>
+              <string>p550mc_vcu118</string>
+              <string>p270_vcu118</string>
+              <string>x280_vcu118</string>
+              <string>p270mc_vcu118</string>
+              <string>x280mc_vcu118</string>
+              <string>p650_vcu118</string>
+              <string>p670_vcu118</string>
+              <string>p650mc_vcu118</string>
+              <string>u64_vcu118</string>
+              <string>u64mc_vcu118</string>
+              <string>u74_vcu118</string>
+              <string>u74mc_vcu118</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>FEDERATION_BRANCH</name>
+          <description>The federation branch name to build bitstream</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>release_generator_orca</string>
+              <string>release_generator_narwhal</string>
+              <string>master</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>REVISION</name>
+          <description>The federation git hash to build bitstream
+Named to REVISION for git bisect</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>ILA</name>
+          <description>Enable auto assertion</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>DEL_BUILD_DIR</name>
+          <description>Delete build directory (federation/) if build success</description>
+          <defaultValue>true</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>SKIP_RUN_FPGA</name>
+          <description>Only build bitstream. NOT run FPGA emulation</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <com.cwctravel.hudson.plugins.extended__choice__parameter.ExtendedChoiceParameterDefinition plugin="extended-choice-parameter@346.vd87693c5a_86c">
+          <name>TEST_CASE_LIST</name>
+          <description>testcases to run</description>
+          <quoteValue>false</quoteValue>
+          <saveJSONParameterToFile>false</saveJSONParameterToFile>
+          <visibleItemCount>20</visibleItemCount>
+          <type>PT_MULTI_SELECT</type>
+          <value>booting_30,linux_vector,tensorflow_lite_f32,tensorflow_lite_int8,stress_ng,lmbench,spec2k6int_test,spec2k6fp_test,spec2k6int_train_400_perlbench,spec2k6int_train_401_bzip2,spec2k6int_train_403_gcc,spec2k6int_train_429_mcf,spec2k6int_train_445_gobmk,spec2k6int_train_456_hmmer,spec2k6int_train_458_sjeng,spec2k6int_train_462_libquantum,spec2k6int_train_464_h264ref,spec2k6int_train_471_omnetpp,spec2k6int_train_473_astar,spec2k6int_train_483_xalancbmk,spec2k6int_train_999_specrand,spec2k6fp_train_410_bwaves,spec2k6fp_train_416_gamess,spec2k6fp_train_433_milc,spec2k6fp_train_434_zeusmp,spec2k6fp_train_435_gromacs,spec2k6fp_train_436_cactusADM,spec2k6fp_train_437_leslie3d,spec2k6fp_train_444_namd,spec2k6fp_train_447_dealII,spec2k6fp_train_450_soplex,spec2k6fp_train_453_povray,spec2k6fp_train_454_calculix,spec2k6fp_train_459_GemsFDTD,spec2k6fp_train_465_tonto,spec2k6fp_train_470_lbm,spec2k6fp_train_481_wrf,spec2k6fp_train_482_sphinx3,spec2k6fp_train_998_specrand</value>
+          <defaultValue>booting_30,linux_vector,tensorflow_lite_f32,tensorflow_lite_int8,stress_ng,lmbench,spec2k6int_test,spec2k6fp_test</defaultValue>
+          <multiSelectDelimiter>;</multiSelectDelimiter>
+        </com.cwctravel.hudson.plugins.extended__choice__parameter.ExtendedChoiceParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SLACK_CHANNEL</name>
+          <description>use '#' for channel, '@' for member ID. use comma to seperate multiple channel. </description>
+          <defaultValue>#us_jenkins_fpga_regression,@U01F91J6QJX</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>STING_MODE</name>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>DATABASE_DIR</name>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>STING_OUTLINE</name>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>CONF_PGID</name>
+          <description>Page ID of confluence page to release prebuilt bitstream</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>SKIP_BUILD</name>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>PREBUILT_DIR</name>
+          <description>prebuilt directory that contains bitstream and dtb</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>JENKINS_LABEL_EMU</name>
+          <description>The label that limit the jenkins job number asking for slurm resource for emulation</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>verif-vcu118</string>
+              <string>floating-vcu118</string>
+              <string>verif-vcu118 || floating-vcu118</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>USE_INITRAMFS</name>
+          <description>Use initramfs kernel Image to boot Linux</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@2660.vb_c0412dc4e6d">
+    <scm class="hudson.plugins.git.GitSCM" plugin="git@4.10.3">
+      <configVersion>2</configVersion>
+      <userRemoteConfigs>
+        <hudson.plugins.git.UserRemoteConfig>
+          <url>git@github.com:sifive/fpga_regression_tw.git</url>
+          <credentialsId>90b29d72-ef3d-41b3-aabf-ecb9463562c2</credentialsId>
+        </hudson.plugins.git.UserRemoteConfig>
+      </userRemoteConfigs>
+      <branches>
+        <hudson.plugins.git.BranchSpec>
+          <name>*/orca_ivp</name>
+        </hudson.plugins.git.BranchSpec>
+      </branches>
+      <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+      <gitTool>Default</gitTool>
+      <submoduleCfg class="empty-list"/>
+      <extensions>
+        <hudson.plugins.git.extensions.impl.WipeWorkspace/>
+      </extensions>
+    </scm>
+    <scriptPath>jenkins/us_build_bit_run_regression.Jenkinsfile</scriptPath>
+    <lightweight>true</lightweight>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

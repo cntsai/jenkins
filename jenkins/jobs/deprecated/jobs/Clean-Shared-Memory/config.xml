@@ -1,0 +1,139 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.40">
+  <actions/>
+  <description>Clean up un-attached shared memory segments</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.1.1"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>7</daysToKeep>
+        <numToKeep>-1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty/>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableResumeJobProperty/>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.0.3">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers>
+        <hudson.triggers.TimerTrigger>
+          <spec>H H(5-11) * * *</spec>
+        </hudson.triggers.TimerTrigger>
+      </triggers>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.83">
+    <script>def cleanUpSharedMemory(nodename) {
+    def ssh = &quot;/usr/bin/ssh -o StrictHostKeyChecking=no $nodename&quot;
+    
+    echo &quot;Current segments on $nodename&quot;
+    sh &apos;echo &quot;My Host $HOSTNAME&quot;&apos;
+    // Excessive cleverness warning
+    // It is extremely difficult to pass complex commands over ssh
+    // due to shell quoting. This is even worse when Jenkins&apos; &apos;sh&apos; is
+    // involved.
+    
+    // The command I want to run is:
+    // /usr/bin/ipcs -m | awk &apos;$6==0 &amp;&amp; $3==&quot;jenkins&quot; { print $2 }&apos; | xargs -n1 ipcrm -m
+    // this will find shared memory segments owned by jenkins and with zero
+    // processes attached, then remove those.
+    //
+    // To get an easily pass-able string without need for quoting, base64 it.
+    // $ base64 -w0
+    // /usr/bin/ipcs -m | awk &apos;$6==0 &amp;&amp; $3==&quot;jenkins&quot; { print $2 }&apos; | xargs -r -n1 ipcrm -m
+    // L3Vzci9iaW4vaXBjcyAtbSB8IGF3ayAnJDY9PTAgJiYgJDM9PSJqZW5raW5zIiB7IHByaW50ICQyIH0nIHwgeGFyZ3MgLXIgLW4xIGlwY3JtIC1tCg==
+
+    sh &quot;ssh $nodename &apos;echo L3Vzci9iaW4vaXBjcyAtbSB8IGF3ayAnJDY9PTAgJiYgJDM9PSJqZW5raW5zIiB7IHByaW50ICQyIH0nIHwgeGFyZ3MgLXIgLW4xIGlwY3JtIC1tCg== | base64 -d | bash&apos;&quot;
+}
+
+// FIXME: This node list should be generated programatically to ensure that
+// it is consistent with active nodes in the standard partition.
+nodes = [
+  // &apos;pet&apos; hosts
+  // &apos;alpha&apos;,
+  //&apos;delta00&apos;,
+  //&apos;delta01&apos;,
+  //&apos;delta02&apos;,
+  //&apos;delta03&apos;,
+  
+  &apos;sigma00&apos;,
+  &apos;sigma01&apos;,
+  &apos;sigma02&apos;,
+  &apos;sigma03&apos;,
+  &apos;sigma04&apos;,
+  &apos;sigma05&apos;,
+  &apos;sigma06&apos;,
+  &apos;sigma07&apos;,
+  &apos;sigma08&apos;,
+  &apos;sigma09&apos;,
+  &apos;sigma10&apos;,
+  &apos;sigma11&apos;,
+  &apos;sigma12&apos;,
+  &apos;sigma13&apos;,
+  &apos;sigma14&apos;,
+ // &apos;sigma15&apos;,
+ // &apos;sigma16&apos;,
+  &apos;sigma17&apos;,
+  &apos;sigma18&apos;,
+  &apos;sigma19&apos;,
+  &apos;sigma20&apos;,
+ // &apos;sigma21&apos;,
+ // &apos;sigma22&apos;,
+  &apos;sigma23&apos;,
+  &apos;sigma24&apos;,
+  &apos;sigma25&apos;,
+  &apos;sigma26&apos;,
+  &apos;sigma27&apos;,
+  &apos;sigma28&apos;,
+  &apos;sigma29&apos;,
+  &apos;sigma30&apos;,
+  &apos;sigma31&apos;,
+  &apos;sigma32&apos;,
+  &apos;sigma33&apos;,
+  &apos;sigma34&apos;,
+  &apos;sigma35&apos;,
+  &apos;sigma36&apos;,
+  &apos;sigma37&apos;,
+  &apos;sigma38&apos;,
+  &apos;sigma39&apos;,
+  &apos;sigma40&apos;,
+  &apos;sigma41&apos;,
+  &apos;sigma42&apos;,
+  &apos;sigma43&apos;,
+  &apos;sigma44&apos;,
+]
+
+
+stage(&apos;Clean Shared Memory Segments&apos;) {
+    def nodeBranch = [:]
+
+    nodes.each { nodeName -&gt;
+        nodeBranch[&quot;Clean $nodeName&quot;] = {
+            timestamps {
+                stage(&quot;Clean $nodeName&quot;) {
+                    timeout(time: 5, unit: &apos;MINUTES&apos;) {
+                        node(&apos;slurm_agent&amp;&amp;small&apos;) {
+                            cleanUpSharedMemory(nodeName)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    parallel(nodeBranch)
+}</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>true</disabled>
+</flow-definition>

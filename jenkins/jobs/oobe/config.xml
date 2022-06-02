@@ -1,0 +1,72 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><project>
+  <actions/>
+  <description>git@github.com:sifive/archive-coreip-sifive.git&#13;
+*/release_generator_narwhal</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.3"/>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>UPSTREAM_WORKSPACE</name>
+          <defaultValue>/scratch/jenkins/workspace/standard-full-e20</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>CORE</name>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.4">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>SLURM.TINY.004</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers>
+    <jenkins.triggers.ReverseBuildTrigger>
+      <spec/>
+      <upstreamProjects>core-validation-build</upstreamProjects>
+      <threshold>
+        <name>SUCCESS</name>
+        <ordinal>0</ordinal>
+        <color>BLUE</color>
+        <completeBuild>true</completeBuild>
+      </threshold>
+    </jenkins.triggers.ReverseBuildTrigger>
+  </triggers>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>echo $UPSTREAM_WORKSPACE
+if [[ ! -e $CORE ]]; then	
+	mkdir $CORE
+else
+    rm -rf $CORE; mkdir $CORE
+fi
+cp $UPSTREAM_WORKSPACE/federation/build/product-coreip-sifive/*/sifive*${CORE}*.tar.gz $CORE
+cd $CORE; tar -xvf sifive_$CORE_*.tar.gz; rm *.gz; cd sifive_*
+OOBE_DIR=`pwd`
+ls $OOBE_DIR
+cd $WORKSPACE; git submodule update --init federation;cd federation;./scripts/quick-submodule-update; source ./scripts/load-wake; wake --init .; cd $WORKSPACE/scripts/qa_ipdelivery/sw_tests;source /home/diemm/.oobe;  python3 oobe.py --benchmark --package-dir $OOBE_DIR --output-filepath $OOBE_DIR/result.txt</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>

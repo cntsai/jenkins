@@ -1,0 +1,81 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.41">
+  <actions/>
+  <description>pipeline fusdk build with different machine, branch, manifest</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.3"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>7</daysToKeep>
+        <numToKeep>-1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <org.jvnet.jenkins.plugins.nodelabelparameter.LabelParameterDefinition plugin="nodelabelparameter@1.9.0">
+          <name>LABEL</name>
+          <description>You can target specific Agent by specifying the unique label associated with that Agent (e.g. &apos;delta00&apos;)</description>
+          <defaultValue>tiny||slurm_agent</defaultValue>
+          <allNodesMatchingLabel>false</allNodesMatchingLabel>
+          <triggerIfResult>allCases</triggerIfResult>
+          <nodeEligibility class="org.jvnet.jenkins.plugins.nodelabelparameter.node.AllNodeEligibility"/>
+        </org.jvnet.jenkins.plugins.nodelabelparameter.LabelParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.4">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+      <configVersion>1</configVersion>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers>
+        <hudson.triggers.TimerTrigger>
+          <spec>H 1 * * 7</spec>
+        </hudson.triggers.TimerTrigger>
+      </triggers>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.93">
+    <script>#!groovy
+
+node(env.LABEL) {
+    
+    ansiColor(&apos;xterm&apos;) {
+        
+        stage(&apos;Build FUSDK sifive-fpga&apos;) {
+            //build job: &apos;Tools/syssw-automation%2Ffusdk-meta-sifive-private&apos;, parameters: [[string(name: &apos;FUSDK_MACHINE&apos;, value: &apos;sifive-fpga&apos;)], [string(name: &apos;META_SIFIVE_PRIVATE_BRANCH&apos;, value: &apos;rel/sifive-fpga/202103&apos;)], [string(name: &apos;FUSDK_MANIFEST&apos;, value: &apos;tools/manifests/sifive.xml&apos;)]], propagate: false
+            build job: &apos;syssw-automation/fusdk-meta-sifive-private&apos;, parameters: [string(name: &apos;FUSDK_MACHINE&apos;, value: &apos;sifive-fpga&apos;), string(name: &apos;META_SIFIVE_PRIVATE_BRANCH&apos;, value: &apos;rel/sifive-fpga/202103&apos;), string(name: &apos;FUSDK_MANIFEST&apos;, value: &apos;tools/manifests/sifive.xml&apos;), string(name: &apos;BITBAKE_PACKAGE&apos;, value: &apos;demo-coreip-cli&apos;)], propagate: true
+        } // stage checkout
+        
+        stage(&apos;Build FUSDK Unmatched&apos;) {
+            echo &quot;Build FUSDK Unmatched&quot;
+            //        steps {
+            //build job: &apos;Tools/syssw-automation/fusdk-meta-sifive-private&apos;, parameters: [[string(name: &apos;token&apos;, value: &apos;FUSDKAutoBuild&apos;)], [string(name: &apos;FUSDK_MACHINE&apos;, value: &apos;FUSDKAutoBuild&apos;)]], propagate: false
+            //}
+            
+            
+            // sh &quot;curl ${fusdk_private_url}token=FUSDKAutoBuild\&amp;FUSDK_MACHINE=sifive-fpga\&amp;META_SIFIVE_PRIVATE_BRANCH=rel/sifive-fpga/202103\&amp;FUSDK_MANIFEST=tools/manifests/sifive.xml&quot;
+        } // stage checkout
+
+        stage(&apos;Build FUSDK qemuriscv64&apos;) {
+            build job: &apos;syssw-automation/fusdk-meta-sifive-private&apos;, parameters: [string(name: &apos;FUSDK_MACHINE&apos;, value: &apos;qemuriscv64&apos;), string(name: &apos;META_SIFIVE_PRIVATE_BRANCH&apos;, value: &apos;rel/sifive-fpga/202103&apos;), string(name: &apos;FUSDK_MANIFEST&apos;, value: &apos;tools/manifests/sifive.xml&apos;), string(name: &apos;BITBAKE_PACKAGE&apos;, value: &apos;demo-coreip-cli&apos;)], propagate: true
+        } // stage checkout
+
+        stage(&apos;notify&apos;) {
+            slackSend channel: &apos;UK6FXJTQU&apos;, color: &apos;#FFFF00&apos;, message: &quot;:jenkinstein: Job &apos;${env.JOB_NAME} [${env.BUILD_NUMBER}]&apos; (${env.BUILD_URL})&quot;
+        }
+    }
+}</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>true</disabled>
+</flow-definition>

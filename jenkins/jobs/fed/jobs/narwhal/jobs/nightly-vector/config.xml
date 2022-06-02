@@ -1,0 +1,167 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.41">
+  <actions/>
+  <description>Nightly Bug hunting run on vector cores. Point of contact: Girish Pai</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.3"/>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty/>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableResumeJobProperty/>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.4">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>GIT_COMMIT</name>
+          <description>Git commit to run </description>
+          <defaultValue>release_generator_narwhal</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>CONFIG_SET</name>
+          <defaultValue>coreip_vector</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>SUITE</name>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>test-nightly</string>
+              <string>test-torture</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>RUNSUITE_NUM_THREADS</name>
+          <description>Select the number of threads for runsuite</description>
+          <defaultValue>5</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SITEST_JOBS</name>
+          <description>The number of jobs from each sitest instance to run, basically number of simulation jobs to run for a given config</description>
+          <defaultValue>100</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>SITEST_DELETE_ON_PASS</name>
+          <description>If selected then passing simulation directory will be removed once simulation finishes.</description>
+          <defaultValue>true</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>NO_VERILOG_DIFF</name>
+          <description>So A LONG time back there was a bug when verilog was generated for the same seed it was different, so the with this disabled it will generate verilog twice and DIFF to ensure they are they are the same, otherwise with this enabled the double generation will be SKIPPED</description>
+          <defaultValue>true</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>JENKINS_TIMEOUT</name>
+          <description>Ability to decrease or increase the jenkins timeout depending on your needs, It is in hours, Default is 36hrs</description>
+          <defaultValue>42</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SIMSCOPE_PROJECT</name>
+          <defaultValue>master</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SIMSCOPE_COMPONENT</name>
+          <defaultValue>Nightly</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>14</daysToKeep>
+        <numToKeep>-1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers>
+        <hudson.triggers.TimerTrigger>
+          <spec>H 14 * * 1,3,5,7
+
+</spec>
+        </hudson.triggers.TimerTrigger>
+        <org.jenkinsci.plugins.ghprb.GhprbTrigger plugin="ghprb@1.42.2">
+          <spec>H/5 * * * *</spec>
+          <configVersion>3</configVersion>
+          <adminlist></adminlist>
+          <allowMembersOfWhitelistedOrgsAsAdmin>false</allowMembersOfWhitelistedOrgsAsAdmin>
+          <orgslist></orgslist>
+          <cron>H/5 * * * *</cron>
+          <buildDescTemplate></buildDescTemplate>
+          <onlyTriggerPhrase>false</onlyTriggerPhrase>
+          <useGitHubHooks>false</useGitHubHooks>
+          <permitAll>false</permitAll>
+          <whitelist></whitelist>
+          <autoCloseFailedPullRequests>false</autoCloseFailedPullRequests>
+          <displayBuildErrorsOnDownstreamBuilds>false</displayBuildErrorsOnDownstreamBuilds>
+          <whiteListTargetBranches>
+            <org.jenkinsci.plugins.ghprb.GhprbBranch>
+              <branch></branch>
+            </org.jenkinsci.plugins.ghprb.GhprbBranch>
+          </whiteListTargetBranches>
+          <blackListTargetBranches>
+            <org.jenkinsci.plugins.ghprb.GhprbBranch>
+              <branch></branch>
+            </org.jenkinsci.plugins.ghprb.GhprbBranch>
+          </blackListTargetBranches>
+          <gitHubAuthId>d100f78b-c5c7-44e9-b9fd-84fcd358c66d</gitHubAuthId>
+          <triggerPhrase></triggerPhrase>
+          <skipBuildPhrase>.*\[skip\W+ci\].*</skipBuildPhrase>
+          <blackListCommitAuthor></blackListCommitAuthor>
+          <blackListLabels></blackListLabels>
+          <whiteListLabels></whiteListLabels>
+          <includedRegions></includedRegions>
+          <excludedRegions></excludedRegions>
+          <extensions/>
+        </org.jenkinsci.plugins.ghprb.GhprbTrigger>
+      </triggers>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@2.93">
+    <scm class="hudson.plugins.git.GitSCM" plugin="git@4.8.2">
+      <configVersion>2</configVersion>
+      <userRemoteConfigs>
+        <hudson.plugins.git.UserRemoteConfig>
+          <url>git@github.com:sifive/federation.git</url>
+          <credentialsId>ad25d95a-4a30-4cc9-bda9-e836d51af0b9</credentialsId>
+        </hudson.plugins.git.UserRemoteConfig>
+      </userRemoteConfigs>
+      <branches>
+        <hudson.plugins.git.BranchSpec>
+          <name>*/release_generator_narwhal</name>
+        </hudson.plugins.git.BranchSpec>
+      </branches>
+      <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+      <submoduleCfg class="empty-list"/>
+      <extensions>
+        <hudson.plugins.git.extensions.impl.CheckoutOption>
+          <timeout>60</timeout>
+        </hudson.plugins.git.extensions.impl.CheckoutOption>
+        <hudson.plugins.git.extensions.impl.CloneOption>
+          <shallow>false</shallow>
+          <noTags>false</noTags>
+          <reference>/sifive/github-cache/federation.git</reference>
+          <timeout>60</timeout>
+          <honorRefspec>false</honorRefspec>
+        </hudson.plugins.git.extensions.impl.CloneOption>
+      </extensions>
+    </scm>
+    <scriptPath>jenkins/nightly.Jenkinsfile</scriptPath>
+    <lightweight>true</lightweight>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

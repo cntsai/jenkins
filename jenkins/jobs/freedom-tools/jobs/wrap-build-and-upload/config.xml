@@ -1,0 +1,192 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.41">
+  <actions>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@1.9.1"/>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@1.9.1">
+      <jobProperties/>
+      <triggers/>
+      <parameters/>
+      <options/>
+    </org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction>
+  </actions>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.3"/>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableResumeJobProperty/>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.4">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>BUILDER_BRANCH</name>
+          <description>The build system&apos;s branch.</description>
+          <defaultValue>sifive-toolchain-2021.06-release</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>TOOLCHAIN_INSTALL_DIR</name>
+          <description>Which folder to put the toolchain</description>
+          <defaultValue>/work/jenkins/$JOB_NAME/$BUILD_ID</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>TOOLCHAIN_INSTALL_NAME</name>
+          <description>The name of the toolchain</description>
+          <defaultValue>$BUILD_ID</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>COMPILER_TYPE</name>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>gcc</string>
+              <string>llvm</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>OS</name>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>none</string>
+              <string>linux</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>META_URL</name>
+          <defaultValue>git@github.com:sifive/toolchain-meta-next.git</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>META_SHA1</name>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SLACK_CHANNEL</name>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>7</daysToKeep>
+        <numToKeep>-1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.93">
+    <script>def buildTarget
+def parameters
+def buildResult
+def toolchainInstallPath = &apos;$TOOLCHAIN_INSTALL_DIR/$TOOLCHAIN_INSTALL_NAME&apos;
+def tppftTarRoot = &quot;/work/dev-tools/preview/freedom-tools-packages&quot;
+def tppftDirPrefix = &quot;parameterized&quot;
+
+
+def getBuildTarget(compilerType, os) {
+    def buildTarget = compilerType == &apos;llvm&apos; ? &apos;toolsuite&apos; : &apos;toolchain&apos;
+    if (os == &apos;linux&apos;) {
+        buildTarget += &quot;-${os}&quot;
+    }
+    
+    return buildTarget
+}
+
+
+pipeline {
+    agent {
+        node {
+            label &apos;tiny || tiny_rhel8&apos;
+            customWorkspace &quot;/scratch/jenkins/workspace/$JOB_NAME/$BUILD_ID&quot;
+        }
+    }
+
+    stages {
+        stage(&apos;Generate Parameters&apos;) {
+            steps {
+                script {
+                    buildTarget = getBuildTarget(env.COMPILER_TYPE, env.OS)
+                    parameters = [
+                        [$class: &apos;StringParameterValue&apos;,
+                         name: &apos;REPO_BRANCH&apos;,
+                         value: String.valueOf(BUILDER_BRANCH)],
+                        [$class: &apos;StringParameterValue&apos;,
+                         name: &apos;BUILD_TARGET&apos;,
+                         value: String.valueOf(buildTarget)],
+                        [$class: &apos;StringParameterValue&apos;,
+                         name: &apos;TOOLCHAIN_META_GITREF&apos;,
+                         value: String.valueOf(META_SHA1)],
+                        [$class: &apos;BooleanParameterValue&apos;,
+                         name: &apos;BUILD_FOR_MACOS&apos;,
+                         value: false],
+                        [$class: &apos;BooleanParameterValue&apos;,
+                         name: &apos;BUILD_FOR_CENTOS&apos;,
+                         value: false],
+                        [$class: &apos;BooleanParameterValue&apos;,
+                         name: &apos;BUILD_FOR_UBUNTU&apos;,
+                         value: true],
+                        [$class: &apos;BooleanParameterValue&apos;,
+                         name: &apos;BUILD_FOR_WINDOWS&apos;,
+                         value: false],
+                        [$class: &apos;BooleanParameterValue&apos;,
+                         name: &apos;BUILD_FOR_REDHAT&apos;,
+                         value: false],
+                        [$class: &apos;StringParameterValue&apos;,
+                         name: &apos;EXTRA_OPTION&apos;,
+                         value: String.valueOf(&apos;minimal&apos;)],
+                    ]
+                }
+            }
+        }
+        stage(&apos;Trigger tpp-freedom-tools&apos;) {
+            steps {
+                script {
+                    buildResult = build job: &apos;tpp-freedom-tools/tpp00--all-build-and-upload--parameterized&apos;, parameters: parameters, propagate: false
+                    if (buildResult.result != &apos;SUCCESS&apos;) {
+                        // TODO: make dir and redirect the build log if the build was failed
+                        throw new Exception(&apos;The tpp-freedom-tools build was unstable!&apos;)
+                    }
+                }
+            }
+        }
+        stage(&apos;Deploy&apos;) {
+            steps {
+                sh &quot;&quot;&quot;
+                  mkdir ${toolchainInstallPath} -p
+                  ln -s ${tppftTarRoot}/${tppftDirPrefix}-${buildResult.id}-${buildTarget}/*.tar.gz ${toolchainInstallPath}.tar.gz
+                  tar xzf ${toolchainInstallPath}.tar.gz -C ${toolchainInstallPath} --strip-components=1
+                &quot;&quot;&quot;
+            }
+        }
+    }
+    post{
+        failure {
+            script {
+                if (env.SLACK_CHANNEL) {
+                    def slack_msg = &quot;*[UNSTABLE]* &lt;${BUILD_URL}|${JOB_NAME} # ${BUILD_ID}&gt;&quot;
+                    if (buildResult) {
+                        slack_msg += &quot;\n&lt;${buildResult.absoluteUrl}|${buildResult.fullDisplayName}&gt; was ${buildResult.result}&quot;
+                    }
+                    slackSend(channel: env.SLACK_CHANNEL, color: &apos;danger&apos;, message: slack_msg)
+                }
+            }
+        }
+    }
+}
+</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

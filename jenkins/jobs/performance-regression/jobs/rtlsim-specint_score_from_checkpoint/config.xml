@@ -1,0 +1,291 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><flow-definition plugin="workflow-job@1145.v7f2433caa07f">
+  <actions>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@1.9.3"/>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@1.9.3">
+      <jobProperties/>
+      <triggers/>
+      <parameters/>
+      <options/>
+    </org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction>
+  </actions>
+  <description>weekly run rtlsim to get specint score from checkpoint&#13;
+&lt;p&gt;Owners: Hsinyi Lee, Fu-Ching Yang&#13;
+Backup: Mike Schoenfelder</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>-1</daysToKeep>
+        <numToKeep>10</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.33">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers>
+        <hudson.triggers.TimerTrigger>
+          <spec>H H(0-5) * * 6</spec>
+        </hudson.triggers.TimerTrigger>
+      </triggers>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2660.vb_c0412dc4e6d">
+    <script>#!groovy
+
+/*
+def _slack_channel_for_build='#sparta-veracity-regressions'
+slack_channel_for_build='#sparta-veracity-regressions'
+*/
+def _slack_channel_for_build='@hsinyi.lee'
+slack_channel_for_build='@hsinyi.lee'
+
+dabble_golden_dir='/work/sparta/regression/dabble_correlate_golden'
+rtlsim_golden_dir='/work/sparta/regression/rtlsim_golden'
+
+def notifyBySlack(channel, result='', message='')
+{
+    result = result == null ? 'SUCCESS' : result
+    def color=['FAILURE': '#A30200',
+               'BUILD_FAIL': '#A30200',
+               'PERF_CHANGE':'#DAA038',
+               'UNSTABLE': '#DAA038',
+               'Back to normal': '#2EB886',
+               'SUCCESS': '#2EB886']
+    slackSend(
+        channel: channel,
+        color:color[result],
+        message: """${env.JOB_NAME} - #${env.BUILD_ID} - ${result} (&lt;${env.RUN_DISPLAY_URL}|Open&gt;)
+$message""")
+}
+
+def readFileWithMaxLen(filename, maxlength) {
+    def msg = readFile(filename)
+    print(msg)
+    if (msg.length() &gt; maxlength) {
+        msg = msg.substring(0, maxlength)
+            msg = "$msg ..."
+    }else if (msg.length() == 0) {
+        return ''
+    }
+    return "```$msg```\n"
+}
+
+def sendLogBySlack(channel, status) {
+    def msg = ''
+    ['p65', 'p55'].each { config -&gt;
+        ['rtlsim', 'dabble'].each { platform -&gt;
+            ['0067', '0068'].each { wkld_bundle -&gt;
+                def title="${config}_${wkld_bundle}_${platform}"
+                if (fileExists("${title}.log")) {
+                    msg += "${title}\n" + readFileWithMaxLen("${title}.log", 500)
+                    sh "rm -f ${title}.log"
+                }
+            }
+        }
+    }
+    notifyBySlack(channel, status, msg)
+}
+
+def checkPerfChange(log_file, notify)
+{
+    catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+    try {
+        sh "cat $log_file || true; [ ! -s $log_file ]"
+    } catch (e) {
+        if (notify){
+            notifyBmChanged(log_file)
+        }
+        throw e
+    }}
+}
+
+def runSpecIntRtlsim(config, notify, wkld_bundle, jobs)
+{
+    def target_dir = ''
+    def githash = ''
+    stage('prepare') {
+        if (checkSnapRtlsimMissing(config, wkld_bundle)) {
+            target_dir = "$rtlsim_golden_dir/$config/current"
+            githash = sh(script:"basename \$(readlink -f $target_dir)", returnStdout:true).replaceAll("\\s","")
+        } else {
+            githash = sh(script:"basename \$(readlink -f /work/sparta/rtlsim/$config/latest)", returnStdout:true).replaceAll("\\s","")
+            target_dir = "${config}_rtlsim/$githash"
+        }
+    }
+    dir (target_dir) {
+        sh "chmod g+w . .. || true"
+        stage('run') {
+            catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') { timestamps {
+                sh """
+                    umask 002
+                    rm -f ${wkld_bundle}.log/log
+                    JOBS=$jobs /work/sparta/scripts/jenkins/rtlsim_specint_score.sh $config $githash $wkld_bundle &amp;&amp; [ -f ${wkld_bundle}.log/log ]
+                """
+            }}
+            sh "cp ${wkld_bundle}.log/log $WORKSPACE/${config}_${wkld_bundle}_rtlsim.log || true"
+        }
+        stage('check_perf_change') {
+            checkPerfChange("${wkld_bundle}.log/rtlsim_alert.log", notify)
+        }
+    }
+    sh "rm -rf ${target_dir}-WStmp || true"
+}
+
+def runSpecIntDabble(config, notify, wkld_bundle, jobs)
+{
+    def target_dir = ''
+    def githash = ''
+    stage('prepare') {
+        githash = sh(script:"basename \$(readlink -f /work/sparta/dabble/latest_func_pass)", returnStdout:true).replaceAll("\\s","")
+        target_dir = "${config}_dabble/$githash"
+    }
+    dir (target_dir) {
+        stage('run') {
+            sh "chmod g+w . .. || true; rm -f ${wkld_bundle}.log/log"
+            catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') { timestamps {
+                sh "/work/sparta/scripts/jenkins/dabble_specint_score.sh $config $githash $wkld_bundle &amp;&amp; [ -f ${wkld_bundle}.log/log ]"
+            }}
+            sh "cp ${wkld_bundle}.log/log $WORKSPACE/${config}_${wkld_bundle}_dabble.log"
+        }
+        stage('check_perf_change') {
+            checkPerfChange("${wkld_bundle}.log/dabble_alert.log", notify)
+        }
+    }
+    sh """
+        rm -rf ${target_dir}-WStmp || true
+    """
+}
+
+def checkSnapRtlsimMissing(config, wkld_bundle)
+{
+    return 0 == sh(script:"[ ! -d $rtlsim_golden_dir/$config/current/$wkld_bundle ]", returnStatus:true)
+}
+
+def checkSnapDabbleMissing(config, wkld_bundle)
+{
+    return 0 == sh(script:"[ ! -d $dabble_golden_dir/$config/current/$wkld_bundle ]", returnStatus:true)
+}
+
+def runSpecIntDabbleSnap(config, wkld_bundle, jobs)
+{
+    def target_dir = "$dabble_golden_dir/$config/current/${wkld_bundle}.log"
+    dir (target_dir) {
+        stage('run') {
+            catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') { timestamps {
+            sh """
+                umask 002
+                chmod g+w . || true
+                ln -sf ${wkld_bundle}.log/$wkld_bundle ..
+                JOBS=$jobs /work/sparta/scripts/jenkins/dabble_specint_score.sh $config \$(basename \$(readlink -f ..)) $wkld_bundle
+            """
+            }}
+        }
+    }
+    sh """
+        rm -rf ${target_dir}-WStmp
+    """
+}
+
+def notifyBmChanged(log_file)
+{
+    def msg = readFile(log_file)
+    def maxlength = 1000
+    def build = sh(script:"grep 'config:' build.yaml | awk -v ORS= '{print \$2}'", returnStdout:true)
+    def url = "http://vis01.internal.sifive.com:8203/d/k1pcacXMk/mallard-performance-regression?var-build=$build"
+    if (msg.length() &gt; maxlength) {
+        msg = msg.substring(0, maxlength)
+            msg = "$msg ..."
+    }
+    notifyBySlack(slack_channel_for_build,     'PERF_CHANGE', "```$msg``` (&lt;$url|Dashboard&gt;)")
+}
+
+pipeline
+{
+    agent {
+        node {
+            label 'tiny_rhel8_perf_score_from_checkpoint'
+            customWorkspace "/work/sparta/regression/${JOB_NAME}/${BUILD_NUMBER}"
+        }
+    }
+    environment {
+        SLURM_ACCOUNT="perf_ci"
+        SALLOC_ACCOUNT="perf_ci"
+        SLURM_BATCH="perf_ci"
+    }
+    stages {
+        stage('specint2006_dabble_snap') { parallel {
+            stage('p65_specint') {
+                when {
+                    expression { return checkSnapDabbleMissing('p65', '0067') }
+                }
+                steps {
+                    runSpecIntDabbleSnap('p65', '0067', 120)
+                }
+            }
+            stage('p65_specfp') {
+                when {
+                    expression { return checkSnapDabbleMissing('p65', '0068') }
+                }
+                steps {
+                    runSpecIntDabbleSnap('p65', '0068', 120)
+                }
+            }
+        }}
+
+        stage('rtlsim_specint2006') { parallel {
+            stage('p65_specint') {
+                steps {
+                    runSpecIntRtlsim('p65', false, '0067', 120)
+                }
+            }
+            stage('p65_specfp') {
+                steps {
+                    runSpecIntRtlsim('p65', false, '0068', 120)
+                }
+            }
+        }}
+
+        stage('dabble_specint2006') { parallel {
+            stage('p65_specint') {
+                steps {
+                    runSpecIntDabble('p65', false, '0067', 120)
+                }
+            }
+            stage('p65_specfp') {
+                steps {
+                    runSpecIntDabble('p65', false, '0068', 120)
+                }
+            }
+        }}
+    }
+
+    post {
+        always {
+            sendLogBySlack(_slack_channel_for_build, currentBuild.result)
+            sh """
+                find .. -mindepth 1 -maxdepth 1 -mtime +10 -exec rm -rf {} +
+            """
+        }
+    }
+}
+</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

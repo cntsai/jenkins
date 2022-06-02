@@ -1,0 +1,84 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.38">
+  <actions/>
+  <description>Start builds across tpp01, tpp02, tpp03 and tpp04.&#xd;
+</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.0.13"/>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.BooleanParameterDefinition>
+          <name>RUN_ON_TPP01</name>
+          <description></description>
+          <defaultValue>true</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>RUN_ON_TPP02</name>
+          <description></description>
+          <defaultValue>true</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>RUN_ON_TPP03</name>
+          <description></description>
+          <defaultValue>true</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>RUN_ON_TPP04</name>
+          <description></description>
+          <defaultValue>true</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.0.2">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.80">
+    <script>    stage(&apos;Trigger Builds In Parallel&apos;) {
+//        steps {
+            // Freestyle build trigger calls a list of jobs
+            // Pipeline build() step only calls one job
+            // To run all three jobs in parallel, we use &quot;parallel&quot; step
+            // https://jenkins.io/doc/pipeline/examples/#jobs-in-parallel
+            parallel(
+                mac: {
+                    if (params.RUN_ON_TPP01 == true) {
+                        build job: &apos;tpp01--wipeout-after-building--parameterized&apos;
+                        build job: &apos;tpp01--wipeout-after-testing--parameterized&apos;
+                    }
+                },
+                windows: {
+                    if (params.RUN_ON_TPP02 == true) {
+                        build job: &apos;tpp02--wipeout-after-testing--parameterized&apos;
+                    }
+                },
+                ubuntu: {
+                    if (params.RUN_ON_TPP03 == true) {
+                        build job: &apos;tpp03--wipeout-after-building--parameterized&apos;
+                        build job: &apos;tpp03--wipeout-after-testing--parameterized&apos;
+                    }
+                },
+                centos: {
+                    if (params.RUN_ON_TPP04 == true) {
+                        build job: &apos;tpp04--wipeout-after-building--parameterized&apos;
+                        build job: &apos;tpp04--wipeout-after-testing--parameterized&apos;
+                    }
+                },
+                failFast: false
+            )
+//        }
+    }
+
+</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

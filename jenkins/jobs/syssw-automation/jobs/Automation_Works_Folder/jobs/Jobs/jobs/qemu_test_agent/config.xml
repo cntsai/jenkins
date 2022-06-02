@@ -1,0 +1,165 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><project>
+  <actions/>
+  <description>Qemu tests</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.3"/>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>FUSDK_MACHINE</name>
+          <description>Pass MACHINE variable to bitbake</description>
+          <defaultValue>qemuriscv64</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>META_SIFIVE_BRANCH</name>
+          <description>branch name of meta-sifive-private</description>
+          <defaultValue>rel/sifive-fpga/202103</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>FUSDK_MANIFEST</name>
+          <description>manifest.xml of meta-sifive-private</description>
+          <defaultValue>tools/manifests/sifive.xml</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>NFS_Path</name>
+          <defaultValue>/work/jenkins/syssw</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>Build_Sub_Path</name>
+          <defaultValue>FUSDK-build</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>tests_to_run</name>
+          <defaultValue>stress-ng coremark dhrystone</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>syssw_automation_tools_branch_name</name>
+          <defaultValue>dev/maxh/add_qemu_tests</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>qemu_memory</name>
+          <defaultValue>2048</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>Test_Result_Save_Path</name>
+          <defaultValue>test_result</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>public_or_private</name>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>Dispatcher_Id</name>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.4">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>SLURM.SMALL.030 || SLURM.SMALL.031 || SLURM.SMALL.032   || SLURM.SMALL.033 || SLURM.SMALL.034 || SLURM.SMALL.035</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>true</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <authToken>AutoBuild_Max</authToken>
+  <triggers>
+    <hudson.triggers.SCMTrigger>
+      <spec>0 0 1 * *</spec>
+      <ignorePostCommitHooks>false</ignorePostCommitHooks>
+    </hudson.triggers.SCMTrigger>
+  </triggers>
+  <concurrentBuild>true</concurrentBuild>
+  <builders>
+    <hudson.plugins.build__timeout.BuildStepWithTimeout plugin="build-timeout@1.20">
+      <strategy class="hudson.plugins.build_timeout.impl.AbsoluteTimeOutStrategy">
+        <timeoutMinutes>120</timeoutMinutes>
+      </strategy>
+      <buildStep class="org.jenkinsci.plugins.conditionalbuildstep.singlestep.SingleConditionalBuilder" plugin="conditional-buildstep@1.4.1">
+        <condition class="org.jenkins_ci.plugins.run_condition.core.AlwaysRun" plugin="run-condition@1.5"/>
+        <buildStep class="hudson.tasks.Shell">
+          <command>#!/bin/bash
+
+# for debugging
+echo $NODE_NAME
+hostname
+build_date=`date +%m-%d-%Y`
+echo "build date = &lt;$build_date&gt;"
+echo "USER=$USER"
+echo "HOME=$HOME"
+echo "PWD=$PWD"
+echo "WORKSPACE=$WORKSPACE"
+echo "git config --global --list"
+
+rm -rf $WORKSPACE/*
+
+git config --global --replace-all url."git@github.com:".insteadOf ssh://git@github.com/
+git config --global --add url."git@github.com:".insteadOf git://git@github.com/
+
+git config --global --list
+
+
+lsb_release -a
+
+##
+cd ${WORKSPACE}
+git clone -b ${syssw_automation_tools_branch_name} git@github.com:sifive/syssw_automation_tools.git
+./syssw_automation_tools/jenkins_scripts/jobs/qemu_test_agent.sh
+##
+
+</command>
+          <configuredLocalRules/>
+        </buildStep>
+        <runner class="org.jenkins_ci.plugins.run_condition.BuildStepRunner$Fail" plugin="run-condition@1.5"/>
+      </buildStep>
+      <operationList>
+        <hudson.plugins.build__timeout.operations.AbortOperation/>
+      </operationList>
+    </hudson.plugins.build__timeout.BuildStepWithTimeout>
+  </builders>
+  <publishers>
+    <hudson.tasks.ArtifactArchiver>
+      <artifacts>*result</artifacts>
+      <allowEmptyArchive>false</allowEmptyArchive>
+      <onlyIfSuccessful>false</onlyIfSuccessful>
+      <fingerprint>false</fingerprint>
+      <defaultExcludes>true</defaultExcludes>
+      <caseSensitive>true</caseSensitive>
+      <followSymlinks>false</followSymlinks>
+    </hudson.tasks.ArtifactArchiver>
+  </publishers>
+  <buildWrappers>
+    <hudson.plugins.timestamper.TimestamperBuildWrapper plugin="timestamper@1.13"/>
+    <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@1.0.0">
+      <colorMapName>xterm</colorMapName>
+    </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
+    <com.cloudbees.jenkins.plugins.sshagent.SSHAgentBuildWrapper plugin="ssh-agent@1.22">
+      <credentialIds>
+        <string>ad25d95a-4a30-4cc9-bda9-e836d51af0b9</string>
+      </credentialIds>
+      <ignoreMissing>false</ignoreMissing>
+    </com.cloudbees.jenkins.plugins.sshagent.SSHAgentBuildWrapper>
+  </buildWrappers>
+</project>

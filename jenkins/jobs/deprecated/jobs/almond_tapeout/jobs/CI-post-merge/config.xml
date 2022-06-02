@@ -1,0 +1,80 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.38">
+  <actions/>
+  <description>Runs on every merge to federation almond_tapeout branch.&#xd;
+&#xd;
+&lt;BR&gt;&lt;BR&gt;&#xd;
+&#xd;
+&lt;BR&gt;&lt;BR&gt;&#xd;
+&lt;a href=&quot;https://github.com/sifive/federation/blob/master/jenkins/TRIAGE_PROCESS.md&quot;&gt;Triage Process&lt;/a&gt;&#xd;
+&#xd;
+&#xd;
+&lt;BR&gt;&lt;BR&gt;&#xd;
+&lt;a href=&quot;https://sifive.atlassian.net/wiki/spaces/ENG/pages/249168019/Federation+Error+Triage&quot;&gt;Known Triage Errors&lt;/a&gt;&#xd;
+&#xd;
+</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>14</daysToKeep>
+        <numToKeep>-1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableResumeJobProperty/>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>GIT_COMMIT</name>
+          <description>Git commit to run &lt;I&gt;and poll&lt;/I&gt;
+&lt;BR&gt;&lt;B&gt;NOTE:&lt;/B&gt;Do &lt;font color=red&gt;&lt;B&gt;NOT&lt;/B&gt;&lt;/font&gt; use this to test private branches.  Instead, you should use &lt;a href=&quot;https://jenkins.internal.sifive.com/job/federation-test-long-manual-trigger&quot;&gt;federation-test-long-manual-trigger&lt;/a&gt;</description>
+          <defaultValue>almond_tapeout</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.0.2">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+      <configVersion>1</configVersion>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers>
+        <hudson.triggers.SCMTrigger>
+          <spec>H/15 * * * *</spec>
+          <ignorePostCommitHooks>false</ignorePostCommitHooks>
+        </hudson.triggers.SCMTrigger>
+      </triggers>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@2.80">
+    <scm class="hudson.plugins.git.GitSCM" plugin="git@4.2.2">
+      <configVersion>2</configVersion>
+      <userRemoteConfigs>
+        <hudson.plugins.git.UserRemoteConfig>
+          <url>git@github.com:sifive/federation.git</url>
+          <credentialsId>ad25d95a-4a30-4cc9-bda9-e836d51af0b9</credentialsId>
+        </hudson.plugins.git.UserRemoteConfig>
+      </userRemoteConfigs>
+      <branches>
+        <hudson.plugins.git.BranchSpec>
+          <name>*/almond_tapeout</name>
+        </hudson.plugins.git.BranchSpec>
+      </branches>
+      <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+      <submoduleCfg class="list"/>
+      <extensions/>
+    </scm>
+    <scriptPath>jenkins/master.Jenkinsfile</scriptPath>
+    <lightweight>true</lightweight>
+  </definition>
+  <triggers/>
+  <disabled>true</disabled>
+</flow-definition>

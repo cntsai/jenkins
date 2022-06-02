@@ -1,0 +1,241 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>building fusdk based meta-sifive-private</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.3"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>5</daysToKeep>
+        <numToKeep>5</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>FUSDK_MACHINE</name>
+          <description>Pass MACHINE variable to bitbake</description>
+          <defaultValue>sifive-fpga</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>META_SIFIVE_PRIVATE_BRANCH</name>
+          <description>branch name of meta-sifive-private</description>
+          <defaultValue>rel/sifive-fpga/202103</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>FUSDK_MANIFEST</name>
+          <description>manifest.xml of meta-sifive-private</description>
+          <defaultValue>tools/manifests/sifive.xml</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>BITBAKE_PACKAGE</name>
+          <description>the package name of bitbak</description>
+          <defaultValue>demo-coreip-cli</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.4">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+      <configVersion>1</configVersion>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>SLURM.BIG.000 || SLURM.BIG.001 || SLURM.005||SLURM.004||SLURM.SMALL.005||SLURM.SMALL.001||SLURM.SMALL.009 || SLURM.006 || SLURM.000</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>true</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <authToken>FUSDKAutoBuild</authToken>
+  <triggers/>
+  <concurrentBuild>true</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+# for debugging
+echo $NODE_NAME
+hostname
+build_date=`date +%m-%d-%Y`
+echo &quot;build date = &lt;$build_date&gt;&quot;
+echo &quot;USER=$USER&quot;
+echo &quot;HOME=$HOME&quot;
+echo &quot;PWD=$PWD&quot;
+echo &quot;WORKSPACE=$WORKSPACE&quot;
+echo &quot;git config --global --list&quot;
+
+git config --global --replace-all url.&quot;git@github.com:&quot;.insteadOf ssh://git@github.com/
+git config --global --add url.&quot;git@github.com:&quot;.insteadOf git://git@github.com/
+
+git config --global --list
+
+# clear and reset folder if needed
+# rm -rf /scratch/syssw/automation/jenkins
+workdir=&quot;/scratch/syssw/automation/jenkins/$FUSDK_MACHINE&quot;
+mkdir -p $workdir
+chmod a+w -R $workdir
+cd $workdir
+
+rm -rf $WORKSPACE/FUSDK_build/$FUSDK_MACHINE/*
+mkdir -p $WORKSPACE/FUSDK_build/$FUSDK_MACHINE
+
+echo &quot;check repo&quot;
+mkdir ~/bin
+PATH=~/bin:$PATH
+curl https://storage.googleapis.com/git-repo-downloads/repo &gt; ~/bin/repo
+chmod a+x ~/bin/repo
+
+
+echo &quot;load python3&quot;
+module load python/python/3.8.1
+
+echo &quot;fallback check&quot;
+if ! python3 -c &apos;import sys; assert sys.version_info &gt;= (3,6)&apos; &gt; /dev/null; then
+    echo &quot;python load failed&quot;
+    export PATH=/sifive/tools/python/python/3.8.1/bin:$PATH
+    python3 --version
+fi
+
+#
+echo &quot;clean old meta-sifive-private&quot;
+rm -rf .repo ./* ./build
+# rm -rf meta-sifive-private meta-clang meta-riscv meta-openembedded openembedded-core .repo
+
+# clone FUSDK
+repo init -u git@github.com:sifive/meta-sifive-private -b $META_SIFIVE_PRIVATE_BRANCH -m $FUSDK_MANIFEST
+repo sync
+
+# OpenEmbedded-Core requires GCC 6 or newer to be available on the host system, download the pre-built one
+./openembedded-core/scripts/install-buildtools -r yocto-3.2_M2 -t 20200729
+. ./openembedded-core/buildtools/environment-setup-x86_64-pokysdk-linux
+
+# Setting up Build Environment
+. ./meta-sifive-private/setup.sh
+
+# build fusdk
+PARALLEL_MAKE=&quot;-j 8&quot; BB_NUMBER_THREADS=8 MACHINE=$FUSDK_MACHINE bitbake $BITBAKE_PACKAGE
+build_result=$?
+
+if [ &quot;$build_result&quot; == &quot;0&quot; ]; then
+
+    # Avoid copy  big artifacts here.
+	#echo &quot;PWD=$PWD&quot;
+	#ls -al $PWD/tmp-glibc/deploy/images/$FUSDK_MACHINE/
+	#ls
+	rm -rf $WORKSPACE/FUSDK_build/$FUSDK_MACHINE
+	mkdir -p $WORKSPACE/FUSDK_build/$FUSDK_MACHINE
+
+	# copy xz file (SD image and rootfs)
+	# cp -f $PWD/tmp-glibc/deploy/images/$FUSDK_MACHINE/$BITBAKE_PACKAGE-$FUSDK_MACHINE.wic.* $WORKSPACE/FUSDK_build/$FUSDK_MACHINE/
+	# cp -f $PWD/tmp-glibc/deploy/images/$FUSDK_MACHINE/$BITBAKE_PACKAGE-$FUSDK_MACHINE-*rootfs.tar.* $WORKSPACE/FUSDK_build/$FUSDK_MACHINE/
+
+	# copy u-boot.itb and u-boot-spl.bin
+	# cp -f $PWD/tmp-glibc/deploy/images/$FUSDK_MACHINE/u-boot*.bin $WORKSPACE/FUSDK_build/$FUSDK_MACHINE/
+	# cp -f $PWD/tmp-glibc/deploy/images/$FUSDK_MACHINE/u-boot*.elf $WORKSPACE/FUSDK_build/$FUSDK_MACHINE/
+	# cp -f $PWD/tmp-glibc/deploy/images/$FUSDK_MACHINE/u-boot*.itb $WORKSPACE/FUSDK_build/$FUSDK_MACHINE/
+
+	# copy kernel image
+	# cp -f $PWD/tmp-glibc/deploy/images/$FUSDK_MACHINE/Image*.bin $WORKSPACE/FUSDK_build/$FUSDK_MACHINE/
+
+	# copy modules
+	# cp -f $PWD/tmp-glibc/deploy/images/$FUSDK_MACHINE/modules*.tgz $WORKSPACE/FUSDK_build/$FUSDK_MACHINE/
+
+
+    exit
+fi
+
+exit $build_result</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.tasks.ArtifactArchiver>
+      <artifacts>FUSDK_build/$FUSDK_MACHINE/*.wic*, FUSDK_build/$FUSDK_MACHINE/u-boot*, FUSDK_build/$FUSDK_MACHINE/Image*, FUSDK_build/$FUSDK_MACHINE/modules*, FUSDK_build/$FUSDK_MACHINE/*.tar.*</artifacts>
+      <allowEmptyArchive>true</allowEmptyArchive>
+      <onlyIfSuccessful>true</onlyIfSuccessful>
+      <fingerprint>false</fingerprint>
+      <defaultExcludes>true</defaultExcludes>
+      <caseSensitive>true</caseSensitive>
+      <followSymlinks>false</followSymlinks>
+    </hudson.tasks.ArtifactArchiver>
+    <hudson.tasks.Mailer plugin="mailer@1.34">
+      <recipients>green.wan@sifive.com</recipients>
+      <dontNotifyEveryUnstableBuild>true</dontNotifyEveryUnstableBuild>
+      <sendToIndividuals>false</sendToIndividuals>
+    </hudson.tasks.Mailer>
+    <com.chikli.hudson.plugin.naginator.NaginatorPublisher plugin="naginator@1.18.1">
+      <regexpForRerun></regexpForRerun>
+      <rerunIfUnstable>false</rerunIfUnstable>
+      <rerunMatrixPart>false</rerunMatrixPart>
+      <checkRegexp>false</checkRegexp>
+      <regexpForMatrixStrategy>TestParent</regexpForMatrixStrategy>
+      <delay class="com.chikli.hudson.plugin.naginator.FixedDelay">
+        <delay>60</delay>
+      </delay>
+      <maxSchedule>1</maxSchedule>
+    </com.chikli.hudson.plugin.naginator.NaginatorPublisher>
+    <jenkins.plugins.slack.SlackNotifier plugin="slack@2.48">
+      <baseUrl></baseUrl>
+      <teamDomain></teamDomain>
+      <authToken></authToken>
+      <tokenCredentialId></tokenCredentialId>
+      <botUser>false</botUser>
+      <room>UK6FXJTQU, ULG2GURH9</room>
+      <sendAsText>false</sendAsText>
+      <iconEmoji></iconEmoji>
+      <username>jenkins</username>
+      <startNotification>false</startNotification>
+      <notifySuccess>false</notifySuccess>
+      <notifyAborted>false</notifyAborted>
+      <notifyNotBuilt>false</notifyNotBuilt>
+      <notifyUnstable>false</notifyUnstable>
+      <notifyRegression>false</notifyRegression>
+      <notifyFailure>false</notifyFailure>
+      <notifyEveryFailure>true</notifyEveryFailure>
+      <notifyBackToNormal>false</notifyBackToNormal>
+      <notifyRepeatedFailure>false</notifyRepeatedFailure>
+      <includeTestSummary>false</includeTestSummary>
+      <includeFailedTests>false</includeFailedTests>
+      <uploadFiles>false</uploadFiles>
+      <artifactIncludes></artifactIncludes>
+      <commitInfoChoice>NONE</commitInfoChoice>
+      <includeCustomMessage>true</includeCustomMessage>
+      <customMessage></customMessage>
+      <customMessageSuccess></customMessageSuccess>
+      <customMessageAborted></customMessageAborted>
+      <customMessageNotBuilt></customMessageNotBuilt>
+      <customMessageUnstable></customMessageUnstable>
+      <customMessageFailure>FUSDK_MACHINE: $FUSDK_MACHINE
+Branch: $META_SIFIVE_PRIVATE_BRANCH
+Manifest: $FUSDK_MANIFEST
+BUILD URL: $BUILD_URL</customMessageFailure>
+    </jenkins.plugins.slack.SlackNotifier>
+  </publishers>
+  <buildWrappers>
+    <hudson.plugins.timestamper.TimestamperBuildWrapper plugin="timestamper@1.13"/>
+    <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@1.0.0">
+      <colorMapName>xterm</colorMapName>
+    </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
+    <com.cloudbees.jenkins.plugins.sshagent.SSHAgentBuildWrapper plugin="ssh-agent@1.22">
+      <credentialIds>
+        <string>ad25d95a-4a30-4cc9-bda9-e836d51af0b9</string>
+      </credentialIds>
+      <ignoreMissing>false</ignoreMissing>
+    </com.cloudbees.jenkins.plugins.sshagent.SSHAgentBuildWrapper>
+  </buildWrappers>
+</project>

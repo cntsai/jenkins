@@ -1,0 +1,112 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><project>
+  <actions/>
+  <description>OWNER: Hau Hsu</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.33">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>OUTPUT_DIR</name>
+          <description>The directory to place the source code.</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>META_NEXT_BRANCH</name>
+          <description>A branch of &lt;a href="https://github.com/sifive/toolchain-meta-next/branches"&gt; toolchain meta next &lt;/a&gt;</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>CHECKOUT_PROJECT</name>
+          <description>The project directory name of a submodule. 
+If both CHECKOUT_PROJECT and CHECKOUT_COMMIT are set, this job will checkout to the COMMIT for PROJECT.</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>CHECKOUT_COMMIT</name>
+          <description>Commit to check out. 
+If both CHECKOUT_PROJECT and CHECKOUT_COMMIT are set, this job will checkout to the COMMIT for PROJECT.</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>TAG</name>
+          <description>If set, add tag to meta-next. &lt;br&gt;
+&lt;p style='color: red'&gt; Note: If CHECKOUT_PROJECT and CHECKOUT_COMMIT are set, the tag is added to the commit before checking out. &lt;/p&gt;</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>tiny_rhel8</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>true</concurrentBuild>
+  <customWorkspace>/scratch/jenkins/archived-builds/${JOB_NAME}/${BUILD_ID}</customWorkspace>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>mkdir -p $(dirname "$OUTPUT_DIR")
+
+git clone git@github.com:sifive/toolchain-meta-next.git \
+	--depth 1 \
+	-b "$META_NEXT_BRANCH" \
+	--recursive \
+	--shallow-submodules \
+	-j8 \
+	"$OUTPUT_DIR"
+
+if [[ -n $CHECKOUT_PROJECT &amp;&amp; -n $CHECKOUT_COMMIT ]]; then
+	echo "[INFO] checkout $CHECKOUT_PROJECT to $CHECKOUT_COMMIT"
+	git -C "$OUTPUT_DIR/$CHECKOUT_PROJECT" fetch --depth 1 origin "$CHECKOUT_COMMIT"
+	git -C "$OUTPUT_DIR/$CHECKOUT_PROJECT" checkout FETCH_HEAD
+fi
+
+if [[ -n $TAG ]]; then
+	echo "[INFO] adding tag: $TAG"
+    git -C "$OUTPUT_DIR/$CHECKOUT_PROJECT" tag "$TAG"
+    git -C "$OUTPUT_DIR/$CHECKOUT_PROJECT" push origin "$TAG"
+fi
+
+commit_id=$(git -C "$OUTPUT_DIR" rev-parse HEAD)
+touch "$OUTPUT_DIR/$commit_id"
+echo "[INFO] toolchain-meta-next commit: $commit_id"
+echo "[INFO] GitHub: https://github.com/sifive/toolchain-meta-next/tree/$commit_id"</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.plugins.logparser.LogParserPublisher plugin="log-parser@2.2">
+      <unstableOnWarning>false</unstableOnWarning>
+      <failBuildOnError>false</failBuildOnError>
+      <showGraphs>true</showGraphs>
+      <parsingRulesPath>/var/lib/jenkins/plugins/log-parser/square_brackets_log.txt</parsingRulesPath>
+      <useProjectRule>false</useProjectRule>
+    </hudson.plugins.logparser.LogParserPublisher>
+    <hudson.plugins.descriptionsetter.DescriptionSetterPublisher plugin="description-setter@1.10">
+      <regexp>^\[INFO\] (GitHub:.+)</regexp>
+      <regexpForFailed/>
+      <setForMatrix>false</setForMatrix>
+    </hudson.plugins.descriptionsetter.DescriptionSetterPublisher>
+  </publishers>
+  <buildWrappers/>
+</project>

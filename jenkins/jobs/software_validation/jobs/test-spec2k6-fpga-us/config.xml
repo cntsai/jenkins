@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?><flow-definition plugin="workflow-job@1145.v7f2433caa07f">
+  <actions>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@1.9.3"/>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@1.9.3">
+      <jobProperties/>
+      <triggers/>
+      <parameters>
+        <string>BENCHMARKS</string>
+        <string>SLACK_CHANNEL</string>
+        <string>INI</string>
+        <string>NOT_REFLASH</string>
+        <string>DATASET</string>
+        <string>TOOLCHAIN_PATH</string>
+        <string>COMPILER_TYPE</string>
+        <string>DRY_RUN</string>
+        <string>OPTSET</string>
+        <string>KEEP_NBD_WHEN_EXIT</string>
+        <string>COREIP_VERSION</string>
+        <string>TESTPIPE</string>
+        <string>TARGETS</string>
+        <string>ITER</string>
+        <string>BUILD_ONLY</string>
+        <string>TESTPIPE_DIR</string>
+        <string>TYPE</string>
+      </parameters>
+      <options/>
+    </org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction>
+  </actions>
+  <description/>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>30</daysToKeep>
+        <numToKeep>-1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.33">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>2</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>true</throttleEnabled>
+      <throttleOption>category</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers/>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.BooleanParameterDefinition>
+          <name>DRY_RUN</name>
+          <description>Dry Run SQL command</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>BUILD_ONLY</name>
+          <description>Build SPEC benchmarks but run</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>TOOLCHAIN_PATH</name>
+          <description>&lt;li&gt;Given toolchain path or toolchain tarball path.&lt;/li&gt;&lt;li&gt;&lt;b&gt;This parameter is necessary&lt;/b&gt;&lt;/li&gt;</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>COMPILER_TYPE</name>
+          <description>&lt;li&gt;options: gcc or llvm&lt;/li&gt;&lt;li&gt;&lt;b&gt;This parameter is necessary&lt;/b&gt;&lt;/li&gt;</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>TESTPIPE</name>
+          <description>&lt;li&gt;Pass from toolchain-ci&lt;/li&gt;</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>TESTPIPE_DIR</name>
+          <description>&lt;li&gt;Pass from toolchain-ci&lt;/li&gt;</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>COREIP_VERSION</name>
+          <description>&lt;li&gt;Options: mongoose,narwhal&lt;/li&gt;</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>TARGETS</name>
+          <description>&lt;li&gt;Given target name to be evaluated. If you have multiple, seperate with ",".&lt;/li&gt;&lt;li&gt;"all" implies all the standard cores in SiFive.&lt;/li&gt;&lt;li&gt;Go to coreip path to check out what target you can specify. &lt;/li&gt;&lt;li&gt;If empty, targets are all&lt;/li&gt;</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>TYPE</name>
+          <description>&lt;li&gt;Evaluation type: vcu118,qemu,vcu118us&lt;/li&gt;</description>
+          <defaultValue>vcu118us</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>BENCHMARKS</name>
+          <description>&lt;li&gt;Given benchmark name to be evaluated. If you have multiple, seperate with ",".&lt;/li&gt;&lt;li&gt;possible options are spec-int,spec-fp,400.perlbench,401.bzip2,403.gcc,429.mcf,445.gobmk,456.hmmer,458.sjeng,462.libquantum,464.h264ref,471.omnetpp,473.astar,483.xalancbmk,433.milc,444.namd,447.dealII,450.soplex,453.povray,470.lbm,482.sphinx3&lt;/li&gt;&lt;li&gt;spec-int implies all the programs in SPECINT&lt;/li&gt;&lt;li&gt;spec-fp implies the c/c++ programs in SPECFP that riscv toolchain can compile&lt;/li&gt;</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>INI</name>
+          <description>&lt;li&gt;Specify config ini from github https://github.com/sifive/spec2k6-fpga-automation/tree/main/config&lt;/li&gt;</description>
+          <defaultValue>config/x280mc.ini</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>DATASET</name>
+          <description>&lt;li&gt;Specify SPEC2006 dataset from test,train,ref&lt;/li&gt;</description>
+          <defaultValue>ref</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>OPTSET</name>
+          <description>&lt;li&gt;Specify an opt set defined in spec2006-quick-eval-kit.&lt;/li&gt;</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>ITER</name>
+          <description>&lt;li&gt;Options: times of running&lt;/li&gt;</description>
+          <defaultValue>1</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>KEEP_NBD_WHEN_EXIT</name>
+          <description>&lt;li&gt;Options: keep nbd server when automation script done&lt;/li&gt;</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>NOT_REFLASH</name>
+          <description>&lt;li&gt;Options: only use in keep_ndb mode&lt;/li&gt;</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SLACK_CHANNEL</name>
+          <description>&lt;li&gt;Give slack channel to notify&lt;/li&gt;</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@2660.vb_c0412dc4e6d">
+    <scm class="hudson.plugins.git.GitSCM" plugin="git@4.10.3">
+      <configVersion>2</configVersion>
+      <userRemoteConfigs>
+        <hudson.plugins.git.UserRemoteConfig>
+          <url>git@github.com:sifive/benchmarks-ci.git</url>
+          <credentialsId>ad25d95a-4a30-4cc9-bda9-e836d51af0b9</credentialsId>
+        </hudson.plugins.git.UserRemoteConfig>
+      </userRemoteConfigs>
+      <branches>
+        <hudson.plugins.git.BranchSpec>
+          <name>*/jane-dev</name>
+        </hudson.plugins.git.BranchSpec>
+      </branches>
+      <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+      <gitTool>Default</gitTool>
+      <submoduleCfg class="empty-list"/>
+      <extensions/>
+    </scm>
+    <scriptPath>jenkins/perf/perf_spec.Jenkinsfile</scriptPath>
+    <lightweight>true</lightweight>
+  </definition>
+  <triggers/>
+  <authToken>go</authToken>
+  <disabled>false</disabled>
+</flow-definition>

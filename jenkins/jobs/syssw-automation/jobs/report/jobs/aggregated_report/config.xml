@@ -1,0 +1,174 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><project>
+  <actions/>
+  <description>FUSDK Test Result Aggregator&lt;br&gt;&#13;
+Trace Daily/Weely job statuses in two weeks.</description>
+  <displayName>Aggregated Report</displayName>
+  <keepDependencies>true</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>28</daysToKeep>
+        <numToKeep>-1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.33">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>tiny_rhel8</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers>
+    <hudson.triggers.TimerTrigger>
+      <spec>H * * * *</spec>
+    </hudson.triggers.TimerTrigger>
+  </triggers>
+  <concurrentBuild>false</concurrentBuild>
+  <builders/>
+  <publishers>
+    <com.jenkins.testresultsaggregator.TestResultsAggregator plugin="test-results-aggregator@1.2.6">
+      <subject/>
+      <recipientsList/>
+      <beforebody/>
+      <afterbody/>
+      <theme>dark</theme>
+      <sortresults>NAME</sortresults>
+      <outOfDateResults/>
+      <compareWithPreviousRun>true</compareWithPreviousRun>
+      <ignoreNotFoundJobs>false</ignoreNotFoundJobs>
+      <ignoreDisabledJobs>false</ignoreDisabledJobs>
+      <ignoreAbortedJobs>false</ignoreAbortedJobs>
+      <selectedColumns>Job, Status, Percentage, Total, Pass, Fail, Skip, Commits, LastRun, Duration</selectedColumns>
+      <data>
+        <com.jenkins.testresultsaggregator.data.Data>
+          <groupName>Narwhal</groupName>
+          <jobs>
+            <com.jenkins.testresultsaggregator.data.Job>
+              <jobName>syssw-automation/daily_test/narwhal_customer_tcdefault</jobName>
+              <jobFriendlyName>daily - customer/default</jobFriendlyName>
+            </com.jenkins.testresultsaggregator.data.Job>
+            <com.jenkins.testresultsaggregator.data.Job>
+              <jobName>syssw-automation/daily_test/narwhal_release_tcdefault</jobName>
+              <jobFriendlyName>daily - release/default</jobFriendlyName>
+            </com.jenkins.testresultsaggregator.data.Job>
+            <com.jenkins.testresultsaggregator.data.Job>
+              <jobName>syssw-automation/weekly_test/narwhal_customer_tcdefault</jobName>
+              <jobFriendlyName>weekly - customer/default</jobFriendlyName>
+            </com.jenkins.testresultsaggregator.data.Job>
+            <com.jenkins.testresultsaggregator.data.Job>
+              <jobName>syssw-automation/weekly_test/narwhal_release_tcdefault</jobName>
+              <jobFriendlyName>weekly - release/default</jobFriendlyName>
+            </com.jenkins.testresultsaggregator.data.Job>
+            <com.jenkins.testresultsaggregator.data.Job>
+              <jobName>syssw-automation/weekly_test/narwhal_release_tcdefault_spec2k6</jobName>
+              <jobFriendlyName>weekly - release/default/spec2k6</jobFriendlyName>
+            </com.jenkins.testresultsaggregator.data.Job>
+          </jobs>
+        </com.jenkins.testresultsaggregator.data.Data>
+        <com.jenkins.testresultsaggregator.data.Data>
+          <groupName>Orca</groupName>
+          <jobs>
+            <com.jenkins.testresultsaggregator.data.Job>
+              <jobName>syssw-automation/daily_test/orca_customer_tcexternal</jobName>
+              <jobFriendlyName>daily - customer/external</jobFriendlyName>
+            </com.jenkins.testresultsaggregator.data.Job>
+            <com.jenkins.testresultsaggregator.data.Job>
+              <jobName>syssw-automation/daily_test/orca_develop_tcdefault</jobName>
+              <jobFriendlyName>daily - develop/default</jobFriendlyName>
+            </com.jenkins.testresultsaggregator.data.Job>
+            <com.jenkins.testresultsaggregator.data.Job>
+              <jobName>syssw-automation/daily_test/orca_develop_tcexternal</jobName>
+              <jobFriendlyName>daily - develop/external</jobFriendlyName>
+            </com.jenkins.testresultsaggregator.data.Job>
+            <com.jenkins.testresultsaggregator.data.Job>
+              <jobName>syssw-automation/daily_test/orca_release_tcexternal</jobName>
+              <jobFriendlyName>daily - release/external</jobFriendlyName>
+            </com.jenkins.testresultsaggregator.data.Job>
+            <com.jenkins.testresultsaggregator.data.Job>
+              <jobName>syssw-automation/weekly_test/orca_customer_tcexternal</jobName>
+              <jobFriendlyName>weekly - customer/external</jobFriendlyName>
+            </com.jenkins.testresultsaggregator.data.Job>
+            <com.jenkins.testresultsaggregator.data.Job>
+              <jobName>syssw-automation/weekly_test/orca_develop_tcdefault</jobName>
+              <jobFriendlyName>weekly - develop/default</jobFriendlyName>
+            </com.jenkins.testresultsaggregator.data.Job>
+            <com.jenkins.testresultsaggregator.data.Job>
+              <jobName>syssw-automation/weekly_test/orca_develop_tcexternal</jobName>
+              <jobFriendlyName>weekly - develop/external</jobFriendlyName>
+            </com.jenkins.testresultsaggregator.data.Job>
+            <com.jenkins.testresultsaggregator.data.Job>
+              <jobName>syssw-automation/weekly_test/orca_release_tcexternal</jobName>
+              <jobFriendlyName>weekly - release/external</jobFriendlyName>
+            </com.jenkins.testresultsaggregator.data.Job>
+          </jobs>
+        </com.jenkins.testresultsaggregator.data.Data>
+        <com.jenkins.testresultsaggregator.data.Data>
+          <groupName>Narwhal for Renesas</groupName>
+          <jobs>
+            <com.jenkins.testresultsaggregator.data.Job>
+              <jobName>syssw-automation/daily_test/narwhal-renesas_customer_tcexternal</jobName>
+              <jobFriendlyName>daily - customer/external</jobFriendlyName>
+            </com.jenkins.testresultsaggregator.data.Job>
+            <com.jenkins.testresultsaggregator.data.Job>
+              <jobName>syssw-automation/daily_test/narwhal-renesas_release_tcexternal</jobName>
+              <jobFriendlyName>daily - release/external</jobFriendlyName>
+            </com.jenkins.testresultsaggregator.data.Job>
+            <com.jenkins.testresultsaggregator.data.Job>
+              <jobName>syssw-automation/weekly_test/narwhal-renesas_customer_tcexternal</jobName>
+              <jobFriendlyName>weekly - customer/external</jobFriendlyName>
+            </com.jenkins.testresultsaggregator.data.Job>
+            <com.jenkins.testresultsaggregator.data.Job>
+              <jobName>syssw-automation/weekly_test/narwhal-renesas_release_tcexternal</jobName>
+              <jobFriendlyName>weekly - release/external</jobFriendlyName>
+            </com.jenkins.testresultsaggregator.data.Job>
+          </jobs>
+        </com.jenkins.testresultsaggregator.data.Data>
+        <com.jenkins.testresultsaggregator.data.Data>
+          <groupName>Public</groupName>
+          <jobs>
+            <com.jenkins.testresultsaggregator.data.Job>
+              <jobName>syssw-automation/daily_test/fusdk-public-build</jobName>
+              <jobFriendlyName>daily - develop</jobFriendlyName>
+            </com.jenkins.testresultsaggregator.data.Job>
+          </jobs>
+        </com.jenkins.testresultsaggregator.data.Data>
+      </data>
+    </com.jenkins.testresultsaggregator.TestResultsAggregator>
+    <htmlpublisher.HtmlPublisher plugin="htmlpublisher@1.29">
+      <reportTargets>
+        <htmlpublisher.HtmlPublisherTarget>
+          <reportName>Test Report Aggregated</reportName>
+          <reportDir>html</reportDir>
+          <reportFiles>index.html</reportFiles>
+          <alwaysLinkToLastBuild>true</alwaysLinkToLastBuild>
+          <reportTitles/>
+          <keepAll>true</keepAll>
+          <allowMissing>false</allowMissing>
+          <includes>**/*</includes>
+          <escapeUnderscores>true</escapeUnderscores>
+        </htmlpublisher.HtmlPublisherTarget>
+      </reportTargets>
+    </htmlpublisher.HtmlPublisher>
+  </publishers>
+  <buildWrappers/>
+</project>

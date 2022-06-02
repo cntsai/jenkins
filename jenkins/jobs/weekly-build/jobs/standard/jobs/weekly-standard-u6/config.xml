@@ -1,0 +1,165 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><flow-definition plugin="workflow-job@1145.v7f2433caa07f">
+  <actions>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@1.9.3"/>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@1.9.3">
+      <jobProperties/>
+      <triggers/>
+      <parameters>
+        <string>SERIES</string>
+        <string>RELEASE_VERSION</string>
+      </parameters>
+      <options/>
+    </org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction>
+  </actions>
+  <description/>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>5</daysToKeep>
+        <numToKeep>-1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.33">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>RELEASE_VERSION</name>
+          <description>release_generator_narwhal</description>
+          <defaultValue>release_generator_narwhal</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SERIES</name>
+          <description>release_generator_narwhal</description>
+          <defaultValue>u6</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers>
+        <hudson.triggers.TimerTrigger>
+          <spec>00 01  * * 6</spec>
+        </hudson.triggers.TimerTrigger>
+      </triggers>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2660.vb_c0412dc4e6d">
+    <script>#!groovy
+pipeline{
+    agent {
+       label 'slurm-rm-standard-u'
+    }
+    environment {
+        slackMessage = "Build: ${JOB_NAME} [Build #: ${BUILD_NUMBER}] ${BUILD_URL}"
+    }
+    parameters {
+        string(
+            defaultValue: 'release_generator_narwhal',
+            description: 'release_generator_narwhal',
+            name: 'RELEASE_VERSION'
+        )
+        string(
+            defaultValue: 'u6',
+            description: 'release_generator_narwhal',
+            name: 'SERIES'
+        )
+    }
+    stages {
+       stage('checkout')
+        {
+            steps {
+                step([$class: 'WsCleanup'])
+                sh 'ls -ltr'
+                checkout([$class: 'GitSCM', branches: [[name: "RET-49"]], extensions: [[$class: 'CleanBeforeCheckout']], userRemoteConfigs: [[url: 'git@github.com:sifive/archive-coreip-sifive.git']]])  
+                sh 'git submodule update --init federation'
+            }
+        }
+        stage('Set Vars') {
+             steps {
+                script{
+			CFILE = "inputConfigs_standard_full_${params.SERIES}.yaml"
+			WS_CFILE = "${WORKSPACE}/$CFILE"
+               }
+	     }
+        }
+        stage('build') {
+           steps {
+               script {
+                 sh "ls"
+                  sh 'cp scripts/release_tasks/inputConfigs.yaml .'
+                  sh 'python3 scripts/release_tasks/input-config.py  --release_version=${RELEASE_VERSION} --git_commit=${RELEASE_VERSION} --rtl_type=full --config_type=standard --series=${SERIES} --target=all '
+                  sh 'python3 scripts/release_tasks/find_number_cores.py --FILE_NAME=${WORKSPACE}/federation/scripts/release_build/coreConfigs.yaml --CORE=${SERIES} --TYPE=standard &gt; .num'
+                  sh "cd ${WORKSPACE}/federation;ls;git checkout ${RELEASE_VERSION}; ./scripts/quick-submodule-update;source scripts/load-wake ;wake --init .;export WAKE_ENV=sanmateo; git checkout RET-13_release_build;  cp -f $WS_CFILE  ${WORKSPACE}/federation/scripts/release_build/; cd ${WORKSPACE}/federation/scripts/release_build/ ;source /home/diemm/.build ; python3 build_script.py --build --input_file $CFILE" 
+               }
+           }
+        }
+        stage('verify tarball') {
+           steps {
+               script {
+                   sh 'ls $WORKSPACE/*.tar.gz |wc -l &gt; tmp'    
+                   sh 'cn=$(cat tmp);echo $cn; on=$(cat .num);if [ $cn == $on ]; then echo success; else exit 1; fi'
+
+               }
+           }
+        }
+        stage('Verify workspace') {
+           steps {
+               script {
+                   sh '''grep FAIL $WORKSPACE/*/federation/build/product-coreip-sifive/*/ipdelivery-qa/*/*.out | grep "error code" | wc -l
+'''
+               }
+           }
+        }
+    }
+    post {
+         always {
+            archiveArtifacts artifacts: '*/federation/build/product-coreip-sifive/*/sifive_*.tar.gz', followSymlinks: false
+         }
+     //   success {
+      //      slackSend(
+       //         message: "Successful ${slackMessage}",
+        //        channel: "rmt-discussion",
+         //       color: "good",
+          //  )
+        //}
+        //failure {
+         //   slackSend(
+          //      message: "Failed ${slackMessage}",
+           //     channel: "rmt-discussion",
+            //    color: "danger",
+           // )
+       // }
+        //aborted {
+         //   slackSend(
+          //      message: "Aborted ${slackMessage}",
+           //     channel: "rmt-discussion",
+            //    color: "warning",
+            //)
+        //}
+
+    }
+}
+</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

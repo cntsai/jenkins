@@ -1,0 +1,269 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>regression for coreip_viu75_256_FPGA_fcd&#xd;
+Owners: Hsinyi Lee, Fu-Ching Yang&#xd;
+Backup: Mike Schoenfelder</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.3"/>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.4">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>1</daysToKeep>
+        <numToKeep>1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>small</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>true</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>hostname
+env
+pwd
+
+. /sifive/tools/Modules/3.2.10/init/sh
+. /sifive/tools/Modules/3.2.10/init/bash
+
+export JENKINS_BUILDS_DIR=/scratch/jenkins/archived-builds
+
+# Create the Jenkins build dir if it doesn&apos;t exist
+mkdir -p $JENKINS_BUILDS_DIR
+cd $JENKINS_BUILDS_DIR
+echo $PWD
+
+mkdir -p $JOB_NAME/$BUILD_NUMBER
+cd $JOB_NAME/$BUILD_NUMBER
+echo $PWD
+
+# Setting federation folder
+git clone git@github.com:sifive/federation.git
+cd federation
+
+# Initialize git submodules and necessary environment variables
+./scripts/quick-submodule-update
+. rc.d/riscv-tools.bashrc
+
+# Always use the latest benchmark-mem_probe
+cd benchmark-mem_probe; git checkout master; cd ..
+
+export FEDERATION_GIT_HASH=`git rev-parse --short HEAD`
+export FEDERATION_ROOT=`pwd`
+export TIMESTAMP=`date &apos;+%m%d%Y%X&apos;`
+
+# Setting necessary variables
+export MEM_PROBE_ROOT=`realpath benchmark-mem_probe`
+
+cd ${MEM_PROBE_ROOT}
+export MEM_PROBE_GIT_HASH=`git rev-parse --short HEAD`
+cd ${FEDERATION_ROOT}
+
+# Setting vector_probe scripts
+# git clone  git@github.com:sifive/vector_probe.git scripts/vector_probe
+# export VECTOR_PROBE_ROOT=`realpath scripts/vector_probe
+# git clone git@github.com:sifive/ooo_probe.git software/tests/ooo_probe
+
+export OOO_PROBE_ROOT=`realpath software/tests/ooo_probe`
+
+cd ${OOO_PROBE_ROOT}
+export OOO_PROBE_GIT_HASH=`git rev-parse --short HEAD`
+cd ${FEDERATION_ROOT}
+
+# Build rtl &amp; VTestDriver
+BUILD_DIR=builds   ./generate-build  coreip_viu75_256_FPGA_fcd
+#BUILD_DIR=build_sc ./generate-build  fbnorth2_hmcu_sim_sc
+cd $FEDERATION_ROOT/builds/coreip_viu75_256_FPGA_fcd
+pwd
+. ./load-modules
+make sim
+cd $FEDERATION_ROOT/builds/coreip_viu75_256_FPGA_fcd/sim
+export SIM_DIR=`pwd`
+./sitest --sim=verilator rv64ui-addi
+
+
+# ---------------------- Scalar memory_probe ----------------------
+export OUTLINE_NAME=&quot;u77-scalar-memory.outline&quot;
+
+./sitest --sim=verilator @$FEDERATION_ROOT/test-outlines/$OUTLINE_NAME --nobuild +verbose -j3
+
+
+export DASHBOARD_INFO=&quot;10.14.135.139,runner,kNHUUhP5AZkthSC8,8202,federation,${FEDERATION_GIT_HASH},coreip_viu75_256_FPGA_fcd,u77,${TIMESTAMP},&quot;
+
+for file in `find sim/$OUTLINE_NAME -name &quot;simulation.err&quot;`                                     
+do                                                                                              
+    # Find benchmark name                                                                       
+    case=&quot;$(echo $file | cut -d&apos;/&apos; -f4)&quot;                                                        
+    echo $case
+    
+    if [ &quot;$case&quot; = &quot;mem_probe&quot; ]; then
+    	python3 $MEM_PROBE_ROOT/$case/analyze_probe_result.py --rtlOut $file --target-mem &apos;&apos; -y $(dirname $file)/result.yaml
+    else
+    	python3 $MEM_PROBE_ROOT/$case/analyze_rtlsim_result.py  --rtlOut $file --target-mem &apos;&apos; -y $(dirname $file)/result.yaml
+    fi                                                                                        
+done
+
+# ---------------------- Vector memory bandwidth ----------------------
+export OUTLINE_NAME=&quot;u77-vector-bandwidth.outline&quot;
+
+./sitest --sim=verilator @$FEDERATION_ROOT/test-outlines/$OUTLINE_NAME --nobuild +verbose -j15
+
+export DASHBOARD_INFO=&quot;10.14.135.139,runner,kNHUUhP5AZkthSC8,8202,federation,${FEDERATION_GIT_HASH},coreip_viu75_256_FPGA_fcd,u77,${TIMESTAMP},${MEM_PROBE_GIT_HASH}&quot;                                            
+
+for file in `find sim/$OUTLINE_NAME -name &quot;simulation.err&quot;`                                     
+do                                                                                              
+    # Find benchmark name                                                                       
+    case=&quot;$(echo $file | cut -d&apos;/&apos; -f5)&quot;                                                        
+    echo $case                                                                                  
+                                                                                                
+    python3 $MEM_PROBE_ROOT/$case/analyze_rtlsim_result.py --rtlOut $file -y $(dirname $file)/result.yaml
+done
+
+# ---------------------- Vector stride memory bandwidth ----------------------
+export OUTLINE_NAME=&quot;u77-vector-stride-bandwidth.outline&quot;
+
+./sitest --sim=verilator @$FEDERATION_ROOT/test-outlines/$OUTLINE_NAME --nobuild +verbose -j15
+
+export DASHBOARD_INFO=&quot;10.14.135.139,runner,kNHUUhP5AZkthSC8,8202,federation,${FEDERATION_GIT_HASH},coreip_viu75_256_FPGA_fcd,u77,${TIMESTAMP},${MEM_PROBE_GIT_HASH}&quot;                                            
+
+for file in `find sim/$OUTLINE_NAME -name &quot;simulation.err&quot;`                                     
+do                                                                                              
+    # Find benchmark name                                                                       
+    case=&quot;$(echo $file | cut -d&apos;/&apos; -f5)&quot;                                                        
+    echo $case                                                                                  
+                                                                                                
+    python3 $MEM_PROBE_ROOT/$case/analyze_rtlsim_result.py --rtlOut $file -y $(dirname $file)/result.yaml
+done
+
+# ---------------------- Vector STREAM ----------------------
+export OUTLINE_NAME=&quot;u77-vector-stream.outline&quot;
+
+./sitest --sim=verilator @$FEDERATION_ROOT/test-outlines/$OUTLINE_NAME --nobuild +verbose -j15
+
+export DASHBOARD_INFO=&quot;10.14.135.139,runner,kNHUUhP5AZkthSC8,8202,federation,${FEDERATION_GIT_HASH},coreip_viu75_256_FPGA_fcd,u77,${TIMESTAMP},${MEM_PROBE_GIT_HASH}&quot;                                            
+
+for file in `find sim/$OUTLINE_NAME -name &quot;simulation.err&quot;`                                    
+do                                                                                             
+    # Find benchmark name                                                                      
+    case=&quot;$(echo $file | cut -d&apos;/&apos; -f5)&quot;                                                       
+    echo $file                                                                                 
+    echo $case                                                                                 
+                                                                                               
+    python3 $MEM_PROBE_ROOT/$case/analyze_rtlsim_result.py --rtlOut $file -y $(dirname $file)/result.yaml
+done                                                                                           
+
+# ---------------------- Vector instruction latency ----------------------
+export OUTLINE_NAME=&quot;u77-vector-inst.outline&quot;
+
+./sitest --sim=verilator @$FEDERATION_ROOT/test-outlines/$OUTLINE_NAME --nobuild +verbose -j15
+
+export DASHBOARD_INFO=&quot;10.14.135.139,runner,kNHUUhP5AZkthSC8,8202,federation,${FEDERATION_GIT_HASH},coreip_viu75_256_FPGA_fcd,u77,${TIMESTAMP},${OOO_PROBE_GIT_HASH}&quot;
+
+for file in `find sim/$OUTLINE_NAME -name &quot;simulation.err&quot;`                                    
+do                                                                                             
+    # Find benchmark name                                                                      
+    case=&quot;$(echo $file | cut -d&apos;/&apos; -f6)&quot;                                                       
+    echo $file                                                                                 
+    echo $case                                                                                 
+                                                                                               
+    python3 $OOO_PROBE_ROOT/script/analyze_probe_result_v.py --rtlOut $file -y $(dirname $file)/result.yaml
+done  
+
+# ------------------------- Insert to dashboard --------------------------
+# Execute the scripts
+/work/sparta/scripts/virtualenv venv
+. venv/bin/activate
+
+BUILD_TIME=`date -Isecond`
+
+cat &lt;&lt; EOT &gt; build_mem.yaml
+platform: federation
+config: coreip_viu75_256_FPGA_fcd
+core: u77
+git_hash: $FEDERATION_GIT_HASH
+benchmark_version: $MEM_PROBE_GIT_HASH
+time: $BUILD_TIME
+EOT
+
+cat &lt;&lt; EOT &gt; build_ooo.yaml
+platform: federation
+config: coreip_viu75_256_FPGA_fcd
+core: u77
+git_hash: $FEDERATION_GIT_HASH
+benchmark_version: $OOO_PROBE_GIT_HASH
+time: $BUILD_TIME
+EOT
+
+find sim/u77-scalar-memory.outline \
+     sim/u77-vector-bandwidth.outline \
+     sim/u77-vector-stride-bandwidth.outline \
+     sim/u77-vector-stream.outline \
+     -name result.yaml -exec cat {} + &gt; result_mem.yaml
+
+find sim/u77-vector-inst.outline -name result.yaml -exec cat {} + &gt; result_ooo.yaml
+
+/work/sparta/scripts/insert_dashboard.py -r result_mem.yaml -b build_mem.yaml &gt; insert_mem.log 2&gt; alert_mem.log
+/work/sparta/scripts/insert_dashboard.py -r result_ooo.yaml -b build_ooo.yaml &gt; insert_ooo.log 2&gt; alert_ooo.log
+
+[ ! -s alert_mem.log ] &amp;&amp; [ ! -s alert_ooo.log ] || exit 100
+</command>
+      <configuredLocalRules/>
+      <unstableReturn>100</unstableReturn>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <jenkins.plugins.slack.SlackNotifier plugin="slack@2.48">
+      <baseUrl></baseUrl>
+      <teamDomain>sifive</teamDomain>
+      <authToken>P0KcFEruoxLBRNfsEgPMCuC4</authToken>
+      <tokenCredentialId></tokenCredentialId>
+      <botUser>false</botUser>
+      <room>#tw-perf-team</room>
+      <sendAsText>false</sendAsText>
+      <iconEmoji></iconEmoji>
+      <username></username>
+      <startNotification>false</startNotification>
+      <notifySuccess>true</notifySuccess>
+      <notifyAborted>false</notifyAborted>
+      <notifyNotBuilt>false</notifyNotBuilt>
+      <notifyUnstable>false</notifyUnstable>
+      <notifyRegression>false</notifyRegression>
+      <notifyFailure>false</notifyFailure>
+      <notifyEveryFailure>true</notifyEveryFailure>
+      <notifyBackToNormal>false</notifyBackToNormal>
+      <notifyRepeatedFailure>false</notifyRepeatedFailure>
+      <includeTestSummary>false</includeTestSummary>
+      <includeFailedTests>false</includeFailedTests>
+      <uploadFiles>false</uploadFiles>
+      <artifactIncludes></artifactIncludes>
+      <commitInfoChoice>NONE</commitInfoChoice>
+      <includeCustomMessage>false</includeCustomMessage>
+      <customMessage></customMessage>
+      <customMessageSuccess></customMessageSuccess>
+      <customMessageAborted></customMessageAborted>
+      <customMessageNotBuilt></customMessageNotBuilt>
+      <customMessageUnstable></customMessageUnstable>
+      <customMessageFailure></customMessageFailure>
+    </jenkins.plugins.slack.SlackNotifier>
+  </publishers>
+  <buildWrappers/>
+</project>

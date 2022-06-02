@@ -1,0 +1,123 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><flow-definition plugin="workflow-job@1145.v7f2433caa07f">
+  <actions>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@1.9.3"/>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@1.9.3">
+      <jobProperties/>
+      <triggers/>
+      <parameters>
+        <string>DRY_RUN</string>
+        <string>TOP_BUILD_NAME</string>
+        <string>SYNC_ONLY</string>
+        <string>FUSDK_MACHINE</string>
+        <string>TEST_CONFIG</string>
+        <string>NFS_WORKSPACE</string>
+        <string>NFS_Path</string>
+        <string>GLOBAL_CONFIG</string>
+      </parameters>
+      <options/>
+    </org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction>
+  </actions>
+  <description>FUSDK tester (dev version)&#13;
+&#13;
+&lt;p&gt;&lt;b&gt;Owner:&lt;/b&gt;&lt;br&gt;&#13;
+Software Validation Team: Lewis Lu (lewis.lu@sifive.com)&lt;br&gt;&#13;
+System Software Team: Max Hsu (max.hsu@sifive.com)&lt;br&gt;</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>60</daysToKeep>
+        <numToKeep>-1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.33">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.BooleanParameterDefinition>
+          <name>SYNC_ONLY</name>
+          <description>Sync Jenkins Job configuration only, do not build anything</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>DRY_RUN</name>
+          <description>Test Jenkins Job pipeline only</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>FUSDK_MACHINE</name>
+          <description>To-be-test FUSDK machines</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>qemuriscv64</string>
+              <string>sifive-fpga</string>
+              <string>unmatched</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>NFS_WORKSPACE</name>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>NFS_Path</name>
+          <defaultValue>/work/jenkins/syssw</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>TOP_BUILD_NAME</name>
+          <defaultValue>(no upstream)</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>GLOBAL_CONFIG</name>
+          <trim>false</trim>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>TEST_CONFIG</name>
+          <trim>false</trim>
+        </hudson.model.TextParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@2660.vb_c0412dc4e6d">
+    <scm class="hudson.plugins.git.GitSCM" plugin="git@4.10.3">
+      <configVersion>2</configVersion>
+      <userRemoteConfigs>
+        <hudson.plugins.git.UserRemoteConfig>
+          <url>git@github.com:sifive/syssw_automation_tools.git</url>
+        </hudson.plugins.git.UserRemoteConfig>
+      </userRemoteConfigs>
+      <branches>
+        <hudson.plugins.git.BranchSpec>
+          <name>preview</name>
+        </hudson.plugins.git.BranchSpec>
+      </branches>
+      <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+      <gitTool>git</gitTool>
+      <submoduleCfg class="empty-list"/>
+      <extensions>
+        <hudson.plugins.git.extensions.impl.WipeWorkspace/>
+      </extensions>
+    </scm>
+    <scriptPath>jenkins_scripts/jenkinsfile/test_pipeline_private.jenkinsfile</scriptPath>
+    <lightweight>true</lightweight>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

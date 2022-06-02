@@ -1,0 +1,472 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><project>
+  <actions/>
+  <description>dabble custom study using parameters&#13;
+&#13;
+&lt;p&gt;Parallel builds will be allowed, but make sure you don't run two studies with the same output area in parallel&#13;
+&#13;
+&lt;p&gt; Owners: Mike Schoenfelder, Jaksa Djordjevic&#13;
+Backup: Top Changwatchai</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>14</daysToKeep>
+        <numToKeep>150</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.33">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>DABBLE_BUILD</name>
+          <description>Dabble from "/work/sparta/dabble" in the form of "2021-08-04.9459bf5d"</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>STUDY_TYPE</name>
+          <description>The name of the study config.  Not tested for non-arch cfgs such as corr and func or any cfg not in the choice list.
+Note that u84 is run daily, so don't rerun the daily run. (This script should detect that condition and exit.)
+
+Workload suites are hardcoded.  Only "study_v05" and "specfp2k6_v02" are comprehended.  The latter is applied to any study type containing "specfp"</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>full_p550n</string>
+              <string>full_p650o</string>
+              <string>full_bode</string>
+              <string>full_cart</string>
+              <string>full_draco</string>
+              <string>--------</string>
+              <string>wp_p550n</string>
+              <string>wp_p650o</string>
+              <string>wp_bode</string>
+              <string>wp_cart</string>
+              <string>--------</string>
+              <string>full_p650o_corr</string>
+              <string>func_p650o</string>
+              <string>corr_p650o</string>
+              <string>---------</string>
+              <string>p550m_hiperf</string>
+              <string>---------</string>
+              <string>full_p550m</string>
+              <string>wp_p550m</string>
+              <string>corr_p550m</string>
+              <string>corr_p550n</string>
+              <string>---------</string>
+              <string>full_cart_exclL2</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>PERF_SLURM_ACCOUNT</name>
+          <description>perf_bulk has significantly lower fairshare than perf</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>perf_bulk</string>
+              <string>perf</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>PERF_SLURM_PARTITION</name>
+          <description>Choose a slurm partition</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>redhat</string>
+              <string>redhat,redhat_cloud</string>
+              <string>redhat,ubuntu_cloud</string>
+              <string>ubuntu_cloud</string>
+              <string>redhat_cloud</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>PERF_DELTA_BEHAVIOR</name>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>honor_no_perf_delta</string>
+              <string>ignore_no_perf_delta</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>tiny_rhel8</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>true</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>PREBUILD_DABBLE_DIR=/work/sparta/dabble
+MAP_LATEST=/work/sparta/map/latest
+SPARTA_BASE=${MAP_LATEST}/sparta
+WORKLOAD_DIR=/work/sparta/wklds
+
+### Jenkins parameters(defined when job is run)
+echo $DABBLE_BUILD
+echo $STUDY_TYPE
+echo $PERF_SLURM_ACCOUNT
+echo $PERF_SLURM_PARTITION
+echo $PERF_DELTA_BEHAVIOR
+
+hostname
+date
+umask 002
+
+my_jenkins_log () {
+    echo "$(date -I'seconds') jenkins-${JOB_BASE_NAME}-${BUILD_NUMBER} $1" &gt;&gt; $PREBUILD_DABBLE_DIR/jenkins.log
+}
+
+# make slurm "charge" this job to perf account
+# we are depending on the func regression job to remove the "@SLURM_EXTRA_SCRIPT_ARGS -A perf_bulk" from study_cfg.base
+#     since that setting will override the environment variables
+export SLURM_ACCOUNT=$PERF_SLURM_ACCOUNT
+export SBATCH_ACCOUNT=$PERF_SLURM_ACCOUNT
+
+
+# Prepare HTML output results area
+mkdir -p $WORKSPACE/html
+RESULTS=$WORKSPACE/html/results.html
+touch $RESULTS # need an empty file to avoid errors later
+
+# debug echo "DABBLE_BUILD=${DABBLE_BUILD}"
+
+if [[ -z "${DABBLE_BUILD}" || "${DABBLE_BUILD}" == "" ]] ; then
+    echo "DABBLE_BUILD not set.  Exiting."
+    exit 1;
+fi
+
+if [[ "${DABBLE_BUILD}" =~ "_" &amp;&amp; ! "${DABBLE_BUILD}" == "latest_func_pass" ]] ; then
+    echo "Not expecting '_' in ${DABBLE_BUILD}.  Should be of form 2021-08-04.9459bf5d . Exiting."
+    exit 1;
+fi
+
+# "target" is reused from the functional regression test and is not really a target here, but a source
+# allow for a value of "latest", which is a symlink
+target=$(readlink -f ${PREBUILD_DABBLE_DIR}/${DABBLE_BUILD})
+
+# Since $DABBLE_BUILD may be "latest" reset the $DABBLE_BUILD variable to the actual build name.
+# Do this because we want the Jenkins "Set Build Name" plugin to reset the build name to have the actual
+# directy name when it updates the build name at the end of the job
+### Actually, this didn't work since the plugin only can see Jenkins ENV variables.
+###     However, when we move to pipelines, I think we can inject values into the Jenkins ENV
+
+DABBLE_BUILD=${target##*/}
+
+echo $DABBLE_BUILD
+echo $target
+
+if [ ! -d $target ] ; then
+    echo "Dabble build $target does not exist.  Exiting."
+    exit 1;
+fi
+
+
+
+# Should figure out how to use dabble_scripts study suite, but hack in a solution for study configs
+# with an "_", and ASSUME that the string preceding the "_" is the generic name of a suite
+# At the time, this variable is only used for naming the output directory
+if [[ $STUDY_TYPE =~ "_" ]] ; then
+    OUTPUT_NAME=$STUDY_TYPE
+else
+    OUTPUT_NAME="study_${STUDY_TYPE}"
+fi
+
+STUDY_DEST=${target}_${OUTPUT_NAME}
+
+MY_GIT_HASH=${target##*.}
+MY_GIT_INFO=$(egrep "git_log_info $MY_GIT_HASH"  $PREBUILD_DABBLE_DIR/jenkins.log)
+
+echo "&lt;h1&gt;Study results for $MY_GIT_HASH&lt;/h1&gt;" &gt;&gt; $RESULTS
+
+### early exit if the magic string in the PR comment indicates that this PR doesn't have a performance change
+if [[ "$MY_GIT_INFO" =~ "no_perf_delta" &amp;&amp; "$PERF_DELTA_BEHAVIOR" == "honor_no_perf_delta" ]] ; then
+    echo "Found \"no_perf_delta\",  so aborting the run."
+    
+    # tell the html report
+    echo "&lt;pre&gt;" &gt;&gt; $RESULTS
+    echo "no_perf_delta, so no study was executed" &gt;&gt; $RESULTS
+    echo "&lt;/pre&gt;" &gt;&gt; $RESULTS
+    
+    # tell the build description setter
+    echo "DataForDescriptionPlugin:no_perf_delta in ${STUDY_DEST}, so no study was executed"
+    exit 0
+fi
+
+### Exit if we already ran a study on this hash and study type
+if [ -d ${STUDY_DEST} ]; then
+    # tell the console
+    echo "Found a ${STUDY_DEST}, so exiting"
+    
+    # tell the html report
+    echo "&lt;pre&gt;" &gt;&gt; $RESULTS
+    echo "Found a ${STUDY_DEST}, so no study was executed" &gt;&gt; $RESULTS
+    echo "&lt;/pre&gt;" &gt;&gt; $RESULTS
+    
+    # tell the build description setter
+    echo "DataForDescriptionPlugin:Found a ${STUDY_DEST}, so no study was executed"
+    
+    exit 0
+fi
+
+
+
+### Prepare a study (theoretically all the steps in this block were
+###    done during the func test
+
+
+
+    # Fix up run_dabble cfg so that the regression can run under jenkins
+    # Until study flow allows us to specify the cfg location,
+    # overwrite the cfgs in the scripts area.  Note that we write
+    # into ~jenkins/.run_dabble .  This may be dangerous if multiple
+    # Jenkins jobs are being run, but all the Jenkins jobs written so far do the same thing
+
+    # change release type (if needed)
+egrep 'DABBLE_BUILD.*fastdebug' $target/scripts/cfgs/run_dabble_cfg &amp;&amp; sed -i -e 's#fastdebug#release#' $target/scripts/cfgs/run_dabble_cfg
+
+    # The following step would not be necessary if we could express the location of run_dabble cfg file to the simfig
+    # Using a .run_dabble in the home directory is dangerous since other flows may depend on it
+    # Only copy if it is different
+    
+#if [ -e $target/scripts/cfgs/study_cfg.base ]; then
+  # The new way
+  my_study_cfg="$STUDY_DEST/common/study_cfg.base"
+#else
+  # the old way:    Remove this if statement once we're comfortable it all works  
+#  diff $target/scripts/cfgs/run_dabble_cfg ~/.run_dabble || cp $target/scripts/cfgs/run_dabble_cfg ~/.run_dabble
+#  my_study_cfg="$STUDY_DEST/common/study_cfg"  # not used yet
+#fi
+
+###
+### prepare the simfig and launch the simulation
+###
+
+export PATH=${target}/scripts:$PATH
+my_jenkins_log "started $STUDY_DEST"
+
+# cat't use auto_simfig since we want to tweak the simfigs before launching
+
+create_simfig ${STUDY_TYPE} $STUDY_DEST
+
+    # Set a slurm partition, overriding DABBLE_BASE's study_cfg
+    echo "\$SLURM_PARTITION $PERF_SLURM_PARTITION" &gt;&gt; $STUDY_DEST/common/study_cfg
+    
+    # Use a command line argument to ensure the slurm account.  Note that this is an array (@).
+    #     The environment variables set above using $PERF_SLURM_ACCOUNT should be sufficient,
+    #       but let's be sure
+    echo "@SLURM_EXTRA_SCRIPT_ARGS -A $PERF_SLURM_ACCOUNT" &gt;&gt; $STUDY_DEST/common/study_cfg
+    
+    # Try to keep jenkins at a lower priority than the default human nice value of 100
+    echo "@SLURM_EXTRA_SCRIPT_ARGS -i 150" &gt;&gt; $STUDY_DEST/common/study_cfg
+    
+    # let's ensure batch mode, even though that is the default now
+    echo "\$BATCH_TYPE  slurm_batch" &gt;&gt; $STUDY_DEST/common/study_cfg
+    echo "\$SLURM_CMD /work/sparta/scripts/run-slurm-batch-mode.sh" &gt;&gt; $STUDY_DEST/common/study_cfg
+    
+    # Assume that the func regression redefined the file locations to a "deployed" area
+    
+    # configure stats_cfg to always emit a CSV file with all the workloads
+    #!!!!  Can't do this here.  THis confuses get_spec.  Need to do later, but how?  Change it in dabble "target" during functional run??
+    #cp $target/scripts/cfgs/stats_cfg $STUDY_DEST/common/stats_cfg
+    #sed -ie 's/#@CSV  RAW/@CSV  RAW/' $STUDY_DEST/common/stats_cfg
+
+cd $target # need to have a cwd that is available to slurm, even if we don't write anything into it
+
+do_simfig $STUDY_DEST
+do_batch $STUDY_DEST
+
+# leave some build information scattered around to be helpful to humans
+echo $MY_GIT_INFO
+echo "Jenkins Build URL: $BUILD_URL" &gt; $STUDY_DEST/common/jenkins_build.log
+echo "Jenkins Build: jenkins-${JOB_BASE_NAME}-${BUILD_NUMBER}" &gt;&gt; $STUDY_DEST/common/jenkins_build.log
+echo "$MY_GIT_INFO" &gt;&gt; $STUDY_DEST/common/jenkins_build.log
+
+my_jenkins_log "completed $STUDY_DEST"
+
+###
+### Push functional check results to (file, eventually Grafana data source or DB)
+###
+
+echo "&lt;pre&gt;" &gt;&gt; $RESULTS
+get_summary $STUDY_DEST &gt;&gt; $RESULTS  || true
+echo "&lt;/pre&gt;" &gt;&gt; $RESULTS
+
+
+### Gather stats for "functional' regression spreadsheet
+
+MY_PR=$(grep -Po "git_log_info $MY_GIT_HASH #\K\d+" $PREBUILD_DABBLE_DIR/jenkins.log )
+MY_PR_DATE=$(grep -Po "git_log_info $MY_GIT_HASH #\d+ \K\d+/\d+/\d+" $PREBUILD_DABBLE_DIR/jenkins.log )
+MY_PR_TIME=$(grep -Po "git_log_info $MY_GIT_HASH #\d+ \d+/\d+/\d+\K.* *\d+:\d+ .." $PREBUILD_DABBLE_DIR/jenkins.log )
+MY_PR_COMMENT=$(grep -Po "git_log_info $MY_GIT_HASH #\d+ \d+/\d+/\d+.* *\d+:\d+ .. \K.*" $PREBUILD_DABBLE_DIR/jenkins.log )
+
+FUNC_PASS=$(grep -oP '\d+(?=/.*PASS)' $STUDY_DEST/common/log.summary | tail -n 1)
+FUNC_PASS="${FUNC_PASS# }"
+
+FUNC_PASS_RATE=$(grep -oP '(?&lt;=\().*(?=%.*PASS)' $STUDY_DEST/common/log.summary | tail -n 1)
+FUNC_PASS_RATE="${FUNC_PASS_RATE# }%"
+
+KIPS=$(grep -Po '[0-9\.]+(?= KIPS)' $STUDY_DEST/common/log.summary | tail -n 1)
+EPI=$(grep -Po '[0-9\.]+(?= EPI)' $STUDY_DEST/common/log.summary | tail -n 1)
+IPC=$(grep -Po '[0-9\.]+(?= IPC)' $STUDY_DEST/common/log.summary | tail -n 1)
+
+
+# We don't know if this is a SPECINT or a SPECFP study, so just look for everything and then decide what to do
+SPECINT=$(grep -Po 'specint2k6 \(.*[0-9\.]+(?=$)' $STUDY_DEST/common/log.summary | awk '{print $3}' | tail -n 1)
+SPECFP=$(grep -Po 'specfp2k6 \(.*[0-9\.]+(?=$)' $STUDY_DEST/common/log.summary | awk '{print $3}' | tail -n 1)
+SPECFP_CPP=$(grep -Po 'specfp2k6_cc\+\+_subset \(.*[0-9\.]+(?=$)' $STUDY_DEST/common/log.summary | awk '{print $3}' | tail -n 1)
+
+STUDY_SUITE_LOGGED=$(grep -oP 'spec.*\(\K\w*(?=\))' $STUDY_DEST/common/log.summary | tail -n 1) # in case we need it
+
+# SPEC results that don't exist will just be null
+echo "$MY_GIT_HASH, $MY_PR, $MY_PR_DATE, $MY_PR_TIME, $STUDY_DEST, $FUNC_PASS, $FUNC_PASS_RATE, $KIPS, $EPI, $IPC, $SPECINT, ,$SPECFP, ,$SPECFP_CPP, , $MY_PR_COMMENT"  &gt; $STUDY_DEST/common/func_regr_results.txt
+
+# Get the uniqe string that run-slurm-*.sh created
+UNIQUE_ID=$(grep -Po 'do_wkld.*(?=")' $STUDY_DEST/common/slurm.out | tail -n 1)
+
+# We can use the description setter plugin to grep the logs and set the description.
+#    The restriction is that it can only be one line.  Therefore grab all the useful information and stuff it into a log message
+echo "DataForDescriptionPlugin:${DABBLE_BUILD}(${STUDY_TYPE}): $UNIQUE_ID = $MY_PR, $MY_PR_DATE, $MY_PR_TIME, $STUDY_DEST, $FUNC_PASS, $FUNC_PASS_RATE, $KIPS, $EPI, $IPC, $SPECINT, ,$SPECFP, ,$SPECFP_CPP, , $MY_PR_COMMENT"
+
+# Use the script to get the official results rather than the result collected above; never fail the job because of this
+/work/sparta/tools/betl/betl_datacenter_wrapper.sh dabble_regression_etl_runner --database_name perf_database --individual_regression_dir $STUDY_DEST || true
+
+# get slurm's idea of how the jobs fared (don't fail the jenkins job if slurmdb is down)
+/work/sparta/scripts/sacct_wc_list_fails $UNIQUE_ID &gt; $STUDY_DEST/common/slurm_fail_summary.log  || true
+
+echo "&lt;h1&gt;Failure Report for wckey $UNIQUE_ID&lt;/h1&gt;" &gt;&gt; $RESULTS
+echo "&lt;pre&gt;" &gt;&gt; $RESULTS
+echo "   (the list will be empty if there are no fails)" &gt;&gt; $RESULTS
+cat $STUDY_DEST/common/slurm_fail_summary.log &gt;&gt; $RESULTS
+echo "&lt;/pre&gt;" &gt;&gt; $RESULTS
+
+
+### Clean up old studies?
+
+### TODOs
+
+
+</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.tasks.ArtifactArchiver>
+      <artifacts>html/results.html</artifacts>
+      <allowEmptyArchive>false</allowEmptyArchive>
+      <onlyIfSuccessful>false</onlyIfSuccessful>
+      <fingerprint>false</fingerprint>
+      <defaultExcludes>true</defaultExcludes>
+      <caseSensitive>true</caseSensitive>
+      <followSymlinks>false</followSymlinks>
+    </hudson.tasks.ArtifactArchiver>
+    <htmlpublisher.HtmlPublisher plugin="htmlpublisher@1.29">
+      <reportTargets>
+        <htmlpublisher.HtmlPublisherTarget>
+          <reportName>HTML Report</reportName>
+          <reportDir>html</reportDir>
+          <reportFiles>results.html</reportFiles>
+          <alwaysLinkToLastBuild>false</alwaysLinkToLastBuild>
+          <reportTitles/>
+          <keepAll>false</keepAll>
+          <allowMissing>false</allowMissing>
+          <includes>**/*</includes>
+          <escapeUnderscores>true</escapeUnderscores>
+        </htmlpublisher.HtmlPublisherTarget>
+      </reportTargets>
+    </htmlpublisher.HtmlPublisher>
+    <hudson.plugins.descriptionsetter.DescriptionSetterPublisher plugin="description-setter@1.10">
+      <regexp>^DataForDescriptionPlugin:(.*)</regexp>
+      <regexpForFailed/>
+      <setForMatrix>false</setForMatrix>
+    </hudson.plugins.descriptionsetter.DescriptionSetterPublisher>
+    <jenkins.plugins.slack.SlackNotifier plugin="slack@602.v0da_f7458945d">
+      <baseUrl/>
+      <teamDomain>sifive</teamDomain>
+      <authToken/>
+      <tokenCredentialId/>
+      <botUser>false</botUser>
+      <room>#dabble-regression</room>
+      <sendAsText>false</sendAsText>
+      <iconEmoji/>
+      <username/>
+      <startNotification>false</startNotification>
+      <notifySuccess>false</notifySuccess>
+      <notifyAborted>false</notifyAborted>
+      <notifyNotBuilt>false</notifyNotBuilt>
+      <notifyUnstable>false</notifyUnstable>
+      <notifyRegression>false</notifyRegression>
+      <notifyFailure>false</notifyFailure>
+      <notifyEveryFailure>false</notifyEveryFailure>
+      <notifyBackToNormal>false</notifyBackToNormal>
+      <notifyRepeatedFailure>false</notifyRepeatedFailure>
+      <includeTestSummary>false</includeTestSummary>
+      <includeFailedTests>false</includeFailedTests>
+      <uploadFiles>false</uploadFiles>
+      <artifactIncludes/>
+      <commitInfoChoice>NONE</commitInfoChoice>
+      <includeCustomMessage>true</includeCustomMessage>
+      <customMessage>This job was initiated by a human
+Color status only reflects status of Jenkins job; it says nothing about pass rate of the study.
+There is no git data from Jenkins since we're using the a functionally passing dabble, and not building from a repo.
+</customMessage>
+      <customMessageSuccess/>
+      <customMessageAborted/>
+      <customMessageNotBuilt/>
+      <customMessageUnstable/>
+      <customMessageFailure/>
+    </jenkins.plugins.slack.SlackNotifier>
+    <hudson.plugins.ws__cleanup.WsCleanup plugin="ws-cleanup@0.40">
+      <patterns class="empty-list"/>
+      <deleteDirs>false</deleteDirs>
+      <skipWhenFailed>false</skipWhenFailed>
+      <cleanWhenSuccess>true</cleanWhenSuccess>
+      <cleanWhenUnstable>true</cleanWhenUnstable>
+      <cleanWhenFailure>false</cleanWhenFailure>
+      <cleanWhenNotBuilt>true</cleanWhenNotBuilt>
+      <cleanWhenAborted>true</cleanWhenAborted>
+      <notFailBuild>false</notFailBuild>
+      <cleanupMatrixParent>false</cleanupMatrixParent>
+      <externalDelete/>
+      <disableDeferredWipeout>false</disableDeferredWipeout>
+    </hudson.plugins.ws__cleanup.WsCleanup>
+  </publishers>
+  <buildWrappers>
+    <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.40">
+      <deleteDirs>false</deleteDirs>
+      <cleanupParameter/>
+      <externalDelete/>
+      <disableDeferredWipeout>false</disableDeferredWipeout>
+    </hudson.plugins.ws__cleanup.PreBuildCleanup>
+    <hudson.plugins.timestamper.TimestamperBuildWrapper plugin="timestamper@1.17"/>
+    <org.jenkinsci.plugins.buildnamesetter.BuildNameSetter plugin="build-name-setter@2.2.0">
+      <template>#${BUILD_NUMBER}:$DABBLE_BUILD(${STUDY_TYPE}): ${PERF_SLURM_ACCOUNT} on ${PERF_SLURM_PARTITION}</template>
+      <descriptionTemplate/>
+      <runAtStart>true</runAtStart>
+      <runAtEnd>true</runAtEnd>
+    </org.jenkinsci.plugins.buildnamesetter.BuildNameSetter>
+  </buildWrappers>
+</project>

@@ -1,0 +1,132 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><project>
+  <actions/>
+  <description>Administer binary packages from builds on tpp03.</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <com.coravy.hudson.plugins.github.GithubProjectProperty plugin="github@1.34.3">
+      <projectUrl>https://github.com/sifive/freedom-tools-jenkins/</projectUrl>
+      <displayName/>
+    </com.coravy.hudson.plugins.github.GithubProjectProperty>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.33">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>PLATFORM_SPEC</name>
+          <defaultValue>x86_64-linux-ubuntu14</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>JOB_STICKER</name>
+          <defaultValue>build-binary-packages</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>EXTRA_NUMBER</name>
+          <defaultValue>0</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>EXTRA_TARGET</name>
+          <defaultValue>clean</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>DO_SIFIVE_MODULE</name>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+  </properties>
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@4.10.3">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <url>git@github.com:sifive/freedom-tools-jenkins.git</url>
+        <credentialsId>cb438954-20f9-4848-b2d9-706651ef8d26</credentialsId>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>master</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+    <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+    <gitTool>Default</gitTool>
+    <submoduleCfg class="empty-list"/>
+    <extensions/>
+  </scm>
+  <assignedNode>run-on-tpp03</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+export GIT_SSH_COMMAND=/home/jenkins/.ssh/git_ssh_command.sh
+cd scripts/administer-build-packages
+mvn validate
+</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.plugins.emailext.ExtendedEmailPublisher plugin="email-ext@2.87">
+      <recipientList>$DEFAULT_RECIPIENTS</recipientList>
+      <configuredTriggers>
+        <hudson.plugins.emailext.plugins.trigger.AlwaysTrigger>
+          <email>
+            <subject>$PROJECT_DEFAULT_SUBJECT</subject>
+            <body>$PROJECT_DEFAULT_CONTENT</body>
+            <recipientProviders>
+              <hudson.plugins.emailext.plugins.recipients.RequesterRecipientProvider/>
+            </recipientProviders>
+            <attachmentsPattern/>
+            <attachBuildLog>false</attachBuildLog>
+            <compressBuildLog>false</compressBuildLog>
+            <replyTo>$PROJECT_DEFAULT_REPLYTO</replyTo>
+            <contentType>project</contentType>
+          </email>
+        </hudson.plugins.emailext.plugins.trigger.AlwaysTrigger>
+      </configuredTriggers>
+      <contentType>default</contentType>
+      <defaultSubject>$DEFAULT_SUBJECT</defaultSubject>
+      <defaultContent>${BUILD_LOG_EXCERPT,start=".*BEGIN_PACKAGE_LIST.*",end=".*END_PACKAGE_LIST.*"}
+
+${BUILD_LOG_EXCERPT,start=".*BEGIN_INSTALL_ITEM.*",end=".*END_INSTALL_ITEM.*"}
+
+$DEFAULT_CONTENT</defaultContent>
+      <attachmentsPattern/>
+      <presendScript>$DEFAULT_PRESEND_SCRIPT</presendScript>
+      <postsendScript>$DEFAULT_POSTSEND_SCRIPT</postsendScript>
+      <attachBuildLog>true</attachBuildLog>
+      <compressBuildLog>false</compressBuildLog>
+      <replyTo>$DEFAULT_REPLYTO</replyTo>
+      <from>jenkins@internal.sifive.com</from>
+      <saveOutput>false</saveOutput>
+      <disabled>false</disabled>
+    </hudson.plugins.emailext.ExtendedEmailPublisher>
+  </publishers>
+  <buildWrappers>
+    <hudson.plugins.timestamper.TimestamperBuildWrapper plugin="timestamper@1.17"/>
+  </buildWrappers>
+</project>

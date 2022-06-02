@@ -1,0 +1,71 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><project>
+  <actions/>
+  <description/>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.33">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>DATABASE_NAME</name>
+          <description>Choose the name of the database.</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>test_jenkins</string>
+              <string>perf_database</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.RunParameterDefinition>
+          <name>BETL_RUNNER_BUILD</name>
+          <description>Pick the betl-runner Build to load in the database.</description>
+          <projectName>performance-regression/betl-run-scraper</projectName>
+          <filter>SUCCESSFUL</filter>
+        </hudson.model.RunParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>tiny_rhel8</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>hostname
+
+
+/work/sparta/tools/betl/betl_datacenter_wrapper.sh jenkins_runner</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.plugins.descriptionsetter.DescriptionSetterPublisher plugin="description-setter@1.10">
+      <regexp>Successfully loaded perf_id's (.*)</regexp>
+      <regexpForFailed/>
+      <description>Loaded perf id's from paths: \1</description>
+      <setForMatrix>false</setForMatrix>
+    </hudson.plugins.descriptionsetter.DescriptionSetterPublisher>
+  </publishers>
+  <buildWrappers/>
+</project>

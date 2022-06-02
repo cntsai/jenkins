@@ -1,0 +1,207 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><flow-definition plugin="workflow-job@1145.v7f2433caa07f">
+  <actions/>
+  <description>Run WorldGuard Nighyly Regressions on 0.9 Branch&#13;
+&#13;
+&lt;h2&gt;Owner: Pavan Madasu&lt;/h2&gt;</description>
+  <displayName>Worldguard Nightly 0.9</displayName>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>9</daysToKeep>
+        <numToKeep>-1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableResumeJobProperty/>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.33">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>GIT_COMMIT</name>
+          <description>Branch name or a hash pushed to github to run against</description>
+          <defaultValue>WG_0.9</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>CONFIG_SET</name>
+          <description>These can either be &lt;b&gt;&lt;i&gt;configs&lt;/i&gt;&lt;/b&gt;, i.e. coreip_e21 coreip_p550 etc listed in a space separated list&lt;br&gt;
+OR&lt;br&gt;
+&lt;b&gt;&lt;i&gt;config-sets&lt;/i&gt;&lt;/b&gt; defined in&lt;br&gt;
+EX:
+&lt;ul&gt;
+  &lt;li&gt;ALL&lt;/li&gt;
+  &lt;li&gt;coreip_mallard&lt;/li&gt;
+  &lt;li&gt;coreip_vector&lt;/li&gt;
+  &lt;li&gt;coreip_caboose&lt;/li&gt;
+  &lt;li&gt;coreip_bullet&lt;/li&gt;
+  &lt;li&gt;coreip_rocket&lt;/li&gt;
+
+&lt;/ul&gt;
+All Are Defined &lt;a href=https://github.com/sifive/federation/tree/master/specs/test-plans&gt;here&lt;/a&gt; in the various test-plans
+&lt;BR&gt;</description>
+          <defaultValue>coreip_worldguard</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>SUITE</name>
+          <description>&lt;b&gt;test-sanity*&lt;/b&gt; - Only Run Sanity tests on nightly configs&lt;br&gt;
+&lt;b&gt;test-nightly-coverage&lt;/b&gt; - Ability to run coverage on nightly configs&lt;br&gt;</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>test-nightly</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SLURM_ACCOUNT</name>
+          <description>Setting the Slurm account to bill the jobs. To see accounts that can be used please use `sshare`, but remember to only use accounts that you authorized to use.</description>
+          <defaultValue>verif_bulk</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>RUNSUITE_NUM_THREADS</name>
+          <description>Select the number of threads for run-suite, which is basically the number of configs to run at a time.
+&lt;BR&gt;
+Based on RUNSUITE_NUM_THREADS and SITEST_JOBS rules below a Jenkins Agent Will be Selected-
+&lt;ul&gt;
+  &lt;li&gt;&lt;B&gt;Default&lt;/B&gt; Small Agent (nightly_small_agent_rhel8)&lt;/li&gt;
+  &lt;li&gt;&lt;B&gt;RUNSUITE_NUM_THREADS &gt; 6&lt;/B&gt; Standard Agent (nightly_standard_agent_rhel8)&lt;/li&gt;
+  &lt;li&gt;&lt;B&gt;SITEST_JOBS &gt; 100&lt;/B&gt; Standard Agent (nightly_standard_agent_rhel8)&lt;/li&gt;
+  &lt;li&gt;&lt;B&gt;SITEST_JOBS*RUNSUITE_NUM_THREADS &gt; 200&lt;/B&gt; Standard Agent (nightly_standard_agent_rhel8)&lt;/li&gt;
+&lt;/ul&gt;</description>
+          <defaultValue>5</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SITEST_JOBS</name>
+          <description>The number of jobs from each sitest instance to run, basically number of simulation jobs to run for a given config
+&lt;BR&gt;
+Based on RUNSUITE_NUM_THREADS and SITEST_JOBS rules below a Jenkins Agent Will be Selected-
+&lt;ul&gt;
+  &lt;li&gt;&lt;B&gt;Default&lt;/B&gt; Small Agent (nightly_small_agent_rhel8)&lt;/li&gt;
+  &lt;li&gt;&lt;B&gt;RUNSUITE_NUM_THREADS &gt; 6&lt;/B&gt; Standard Agent (nightly_standard_agent_rhel8)&lt;/li&gt;
+  &lt;li&gt;&lt;B&gt;SITEST_JOBS &gt; 100&lt;/B&gt; Standard Agent (nightly_standard_agent_rhel8)&lt;/li&gt;
+  &lt;li&gt;&lt;B&gt;SITEST_JOBS*RUNSUITE_NUM_THREADS &gt; 200&lt;/B&gt; Standard Agent (nightly_standard_agent_rhel8)&lt;/li&gt;
+&lt;/ul&gt;</description>
+          <defaultValue>100</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>NODE_AGENT</name>
+          <description>&lt;h6&gt;Override the Jenkins Agent to Target different Slurm Partitions/Agent Sizes&lt;/h6&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;b&gt;nightly_small_agent_rhel8&lt;/b&gt; (Redhat)&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;nightly_small_cloud_agent_rhel8&lt;/b&gt; (Redhat Cloud)&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;nightly_standard_agent_rhel8&lt;/b&gt; (Redhat)&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;nightly_standard_cloud_agent_rhel8&lt;/b&gt; (Redhat Cloud)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h6&gt;USE ONLY FOR OLD RELEASE BRANCHES&lt;/h6&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;b&gt;nightly_small_agent&lt;/b&gt; (Ubuntu)&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;nightly_small_cloud_agent&lt;/b&gt; (Ubuntu Cloud)&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;nightly_standard_agent&lt;/b&gt; (Ubuntu)&lt;/li&gt;
+&lt;/ul&gt;</description>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SITEST_TEST_WALLTIME_LIMIT</name>
+          <description>This can be used to set a global timeout for all tests being run
+&lt;br&gt;Format is HR:MIN:SEC, 02:00:00 would set the test timeout for all tests to 2hrs.</description>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>JENKINS_TIMEOUT</name>
+          <description>Ability to decrease or increase the jenkins timeout depending on your needs, It is in hours, Default is 36hrs</description>
+          <defaultValue>36</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SIMSCOPE_PROJECT</name>
+          <description>Setting the SimScope Project for Regression</description>
+          <defaultValue>worldguard</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SIMSCOPE_COMPONENT</name>
+          <description>Setting the SimScope Component for Regression</description>
+          <defaultValue>wg_0.9</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>SITEST_DELETE_ON_PASS</name>
+          <description>If selected then passing simulation directory will be removed once simulation finishes.</description>
+          <defaultValue>true</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SLACK_CHANNEL</name>
+          <description>Select a slack channel to get notifications if/when your run fails.</description>
+          <defaultValue>#verif_worldguard</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>DISABLE_SLURM</name>
+          <description>This can be used if launching jobs on dedicated hosts such as Lambda machines</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>2</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers>
+        <hudson.triggers.TimerTrigger>
+          <spec>H 16 * * *</spec>
+        </hudson.triggers.TimerTrigger>
+      </triggers>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@2660.vb_c0412dc4e6d">
+    <scm class="hudson.plugins.git.GitSCM" plugin="git@4.10.3">
+      <configVersion>2</configVersion>
+      <userRemoteConfigs>
+        <hudson.plugins.git.UserRemoteConfig>
+          <url>git@github.com:sifive/federation.git</url>
+          <credentialsId>18352a7f-c03f-4cf2-a4a5-cad442f328d6</credentialsId>
+        </hudson.plugins.git.UserRemoteConfig>
+      </userRemoteConfigs>
+      <branches>
+        <hudson.plugins.git.BranchSpec>
+          <name>${GIT_COMMIT}</name>
+        </hudson.plugins.git.BranchSpec>
+      </branches>
+      <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+      <gitTool>Default</gitTool>
+      <submoduleCfg class="empty-list"/>
+      <extensions>
+        <hudson.plugins.git.extensions.impl.CheckoutOption>
+          <timeout>60</timeout>
+        </hudson.plugins.git.extensions.impl.CheckoutOption>
+        <hudson.plugins.git.extensions.impl.CloneOption>
+          <shallow>false</shallow>
+          <noTags>false</noTags>
+          <reference>/sifive/github-cache/federation.git</reference>
+          <timeout>60</timeout>
+          <honorRefspec>false</honorRefspec>
+        </hudson.plugins.git.extensions.impl.CloneOption>
+      </extensions>
+    </scm>
+    <scriptPath>jenkins/nightly.Jenkinsfile</scriptPath>
+    <lightweight>false</lightweight>
+  </definition>
+  <triggers/>
+  <disabled>true</disabled>
+</flow-definition>

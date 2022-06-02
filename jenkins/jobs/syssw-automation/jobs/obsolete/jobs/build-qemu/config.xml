@@ -1,0 +1,92 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><flow-definition plugin="workflow-job@1145.v7f2433caa07f">
+  <actions>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@1.9.3"/>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@1.9.3">
+      <jobProperties/>
+      <triggers/>
+      <parameters/>
+      <options/>
+    </org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction>
+  </actions>
+  <description>Owner:&lt;br&gt;&#13;
+* Frank Chang&lt;br&gt;&#13;
+* Lewis Lu&lt;br&gt;&#13;
+* Han-Kuan Chen&lt;br&gt;</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty>
+      <abortPrevious>false</abortPrevious>
+    </org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.33">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>QEMU_SHA1</name>
+          <description>SHA1 in https://github.com/sifive/qemu-private</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2660.vb_c0412dc4e6d">
+    <script>pipeline {
+	agent {
+		node {
+			label "tiny_rhel8"
+			customWorkspace "/scratch/jenkins/workspace/${JOB_NAME}/${BUILD_ID}"
+		}
+	}
+	stages {
+		stage('build') {
+			when {
+				expression { params.QEMU_SHA1 != "" }
+			}
+			steps {
+				script {
+					sh """
+					    if [ -d "/work/build-qemu/\${QEMU_SHA1}" ]; then
+					        exit 0
+				        fi
+					    source /sifive/tools/Modules/init-chooser
+				        module load ninja/ninja/1.10.1
+						git clone git@github.com:sifive/qemu-private.git
+						cd qemu-private
+						git reset --hard \${QEMU_SHA1}
+						mkdir build
+						cd build
+						../configure --prefix=/work/build-qemu/\${QEMU_SHA1} --target-list=riscv64-linux-user
+						ninja install
+						if [ -d "/work/build-qemu/\${QEMU_SHA1}" ]; then
+						    cd /work/build-qemu
+						    tar zcvf \${QEMU_SHA1}.tar.gz \${QEMU_SHA1}
+						fi
+					"""
+				}
+			}
+		}
+	}
+	post {
+		cleanup {
+			deleteDir()
+		}
+	}
+}</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

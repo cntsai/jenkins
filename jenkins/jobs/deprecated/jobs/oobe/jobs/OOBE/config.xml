@@ -1,0 +1,112 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.40">
+  <actions/>
+  <description>Run OOBE Checks</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.1.1"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>10</daysToKeep>
+        <numToKeep>15</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>DesignJSON</name>
+          <description>Path to Design JSON for OOBE Check. Must be in globally accessable are such as /work.</description>
+          <defaultValue>/work/oobe_checks/design_jsons/</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>ScalaClassPath</name>
+          <description>Full Scala config classpath (e.g. sifive.enterprise.everywhere.coreip.WithPearlS2Alterations)</description>
+          <defaultValue></defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>ScalaConfigFile</name>
+          <description>Path to Scala alterations file. Usually in /work/oobe_checks/scala_configs. Must be in globally accessable area such as /work.
+Only necessary if the file containing the Scala config class is not already present in the branch.</description>
+          <defaultValue></defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>VersionTag</name>
+          <description>Federation tag to checkout (e.g. v19.08p2p0). Takes precedence over the IP release version from the design JSON. Should be supplied if CommitHash is supplied.</description>
+          <defaultValue></defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>CommitHash</name>
+          <description>Commit hash (or branch name) to checkout. Takes precedence over VersionTag and the IP release version from the design JSON.</description>
+          <defaultValue></defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>SlurmPartition</name>
+          <description>Slurm partition to use for this run</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>cloud</string>
+              <string>standard</string>
+              <string>standard,cloud</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>MechanicalTurkBranch</name>
+          <description>The branch for the clone of the &lt;a href=&quot;https://github.com/sifive/mechanical_turk&quot;&gt;Mechanical Turk Repo&lt;/a&gt;.</description>
+          <defaultValue>master</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SitestJobs</name>
+          <description>Sitest Number of concurrent tests to run at any given time.</description>
+          <defaultValue>100</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>BranchReuse</name>
+          <description>If selected, the OOBE check will be performed on the branch specified in the CommitHash option. Otherwise, a new branch will be created off the specified commit hash/version tag.</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.0.3">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@2.83">
+    <scm class="hudson.plugins.git.GitSCM" plugin="git@4.4.4">
+      <configVersion>2</configVersion>
+      <userRemoteConfigs>
+        <hudson.plugins.git.UserRemoteConfig>
+          <url>git@github.com:sifive/mechanical_turk.git</url>
+          <credentialsId>ad25d95a-4a30-4cc9-bda9-e836d51af0b9</credentialsId>
+        </hudson.plugins.git.UserRemoteConfig>
+      </userRemoteConfigs>
+      <branches>
+        <hudson.plugins.git.BranchSpec>
+          <name>${MechanicalTurkBranch}</name>
+        </hudson.plugins.git.BranchSpec>
+      </branches>
+      <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+      <submoduleCfg class="list"/>
+      <extensions/>
+    </scm>
+    <scriptPath>jenkins/oobe_check.Jenkinsfile</scriptPath>
+    <lightweight>false</lightweight>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

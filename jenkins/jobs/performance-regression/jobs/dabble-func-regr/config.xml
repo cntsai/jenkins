@@ -1,0 +1,562 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><project>
+  <actions/>
+  <description>dabble functional regression; run on a schedule, but hoping to be run on every PR&#13;
+&#13;
+&lt;p&gt; Owners: Mike Schoenfelder, Jaksa Djordjevic&#13;
+Backup: Top Changwatchai</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>7</daysToKeep>
+        <numToKeep>-1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <com.coravy.hudson.plugins.github.GithubProjectProperty plugin="github@1.34.3">
+      <projectUrl>https://github.com/sifive/dabble/</projectUrl>
+      <displayName/>
+    </com.coravy.hudson.plugins.github.GithubProjectProperty>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.33">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>CUSTOM_HASH</name>
+          <description>If you want to build on a specific dabble git SHA, then specify it here as a "custom hash". (Blank will run test on tip of master.)</description>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>1</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>true</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+  </properties>
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@4.10.3">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <url>git@github.com:sifive/dabble</url>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>*/master</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+    <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+    <gitTool>Default</gitTool>
+    <submoduleCfg class="empty-list"/>
+    <extensions/>
+  </scm>
+  <assignedNode>perf_regr_agent_rhel8</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers>
+    <hudson.triggers.SCMTrigger>
+      <spec>H/5 * * * *</spec>
+      <ignorePostCommitHooks>false</ignorePostCommitHooks>
+    </hudson.triggers.SCMTrigger>
+  </triggers>
+  <concurrentBuild>false</concurrentBuild>
+  <customWorkspace>/scratch/jenkins/archived-builds/${JOB_NAME}/${BUILD_ID}</customWorkspace>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>PERF_SLURM_ACCOUNT=perf_ci
+
+STUDY_TYPE="func_p650o"
+PREBUILD_DABBLE_DIR=/work/sparta/dabble
+MAP_LATEST=/work/sparta/map/latest
+SPARTA_BASE=${MAP_LATEST}/sparta
+WORKLOAD_DIR=/work/sparta/wklds
+
+echo "Custom hash is &gt;&gt;&gt;$CUSTOM_HASH&lt;&lt;&lt;.  (Blank will run test on tip of master.)"
+
+hostname
+umask 002
+env
+
+my_jenkins_log () {
+    echo "$(date -I'seconds') jenkins-${JOB_BASE_NAME}-${BUILD_NUMBER} $1" &gt;&gt; $PREBUILD_DABBLE_DIR/jenkins.log
+}
+
+### conda dabble_env (do this early so the git has returns 8 characters)
+set +x
+. /work/sparta/conda/miniforge3/etc/profile.d/conda.sh
+conda activate dabble_env_2
+set -x
+
+### For a parameterized, custom run the user may have asked for a specific HASH.  Use it.
+if [ "${CUSTOM_HASH}" != "" ]; then 
+    git checkout ${CUSTOM_HASH}
+fi
+
+### check version
+GIT_HASH=$(git show -s --format=%ad.%h --date=short HEAD)
+
+target=$PREBUILD_DABBLE_DIR/$GIT_HASH
+echo $target
+
+date
+
+# make slurm "charge" this job to perf account
+export SLURM_ACCOUNT=$PERF_SLURM_ACCOUNT
+export SBATCH_ACCOUNT=$PERF_SLURM_ACCOUNT
+
+# Prepare HTML output results area
+mkdir -p $WORKSPACE/html
+RESULTS=$WORKSPACE/html/results.html
+
+touch $RESULTS # need a file to exist to avoid errors in case of early exit
+
+# The followuing script will build sparta if it needs building
+/work/sparta/scripts/jenkins/build_map
+
+if [ $? != 0 ]; then
+    echo 'Sparta might have a race condition.  Try mving /work/sparta/map&lt;build&gt; to the "trash" dir and rerunning the job.'
+fi
+
+### build dabble (should always need building, but the check is helpful for debugging Jenkins job)
+if [ ! -f $target/release/sim/dabble ]; then
+	
+    my_jenkins_log "building $target"
+
+
+	### build dabble
+	git submodule update --init --recursive
+   
+
+	mkdir release
+	cd release
+	CC=clang CXX=clang++ cmake .. -DCMAKE_BUILD_TYPE=Release -DSPARTA_BASE=$SPARTA_BASE
+	make -j6
+    
+    date
+
+	cd test
+	make -j6
+	ctest
+	cd ../..
+    
+    # Why are we deactivating conda?
+    #set +x
+    #conda deactivate
+    #set -x
+    
+    # grab a git log so study flow can extract PR info
+    git log --date=format-local:'%-m/%-d/%-y %-I:%M %p' -1 &gt; dabble_git.log
+
+	### copy release files and study flow scripts
+    #### Note: the dabble make now has a install/deploy target.
+    ####        It uses slightly different directory structure.  We should probably use it and fix
+    ####        all the downstream projects (correlation flow) that expects the directory structure below
+	mkdir -p $target/release
+    cp dabble_git.log $target
+    cp -Lr release/sim $target/release
+    cp -r sim/layouts $target/release
+    cp -r scripts $target
+    mkdir -p $target/tools
+    ln -s $(readlink -f ${MAP_LATEST}/helios/pipeViewer/pipe_view/argos.py) $target/tools
+    
+    ### Add cross-references and git info
+    MY_COMMIT=$(grep -oP '^commit \K(\w{8})' dabble_git.log)
+    MY_DATE=$(grep -oP '^Date:\s*\K(.*)' dabble_git.log)
+    MY_PR=$(grep -m1 -oP '.*\(\K(#\d+)' dabble_git.log)
+    MY_PR_COMMENT=$(grep -m1 -oP '\s*\K.*(?=\(#)' dabble_git.log)
+    my_jenkins_log "git_log_info ${MY_COMMIT} ${MY_PR} ${MY_DATE} ${MY_PR_COMMENT}"
+    
+	git -C $SPARTA_BASE rev-parse HEAD &gt; $target/release/sparta_hash
+    echo "Jenkins Build URL: $BUILD_URL" &gt; $target/jenkins_build.log
+    echo "Jenkins Build: jenkins-${JOB_BASE_NAME}-${BUILD_NUMBER}" &gt;&gt; $target/jenkins_build.log
+    my_jenkins_log "built $target"
+    
+    ### promote the "latest" symlinks even if a custom hash since downstream dabble regression triggered from this job expect "latest" symlink
+	rm -f $PREBUILD_DABBLE_DIR/latest
+	ln -s $target $PREBUILD_DABBLE_DIR/latest
+    
+fi
+
+
+### prepare for smoke and functional check and launch the simfig
+
+# Fix up cfgs so that the func regression can run under jenkins
+
+# ensure the release type in run_dabble_cfg is like we want it (if it needs to change)
+egrep 'DABBLE_BUILD.*fastdebug' $target/scripts/cfgs/run_dabble_cfg &amp;&amp; sed -i -e 's#fastdebug#release#' $target/scripts/cfgs/run_dabble_cfg
+
+
+if [ -e $target/scripts/cfgs/study_cfg.base ]; then
+  # The new way
+  # set file that contains the DD commands
+  my_DD_cfg="$target/scripts/cfgs/run_dabble_cfg"
+  # Get rid of the "-A" since we want to use environment variables to influence slurm accounts
+  sed -i -e '/@SLURM_EXTRA_SCRIPT_ARGS -A/d' $target/scripts/cfgs/study_cfg.base
+else
+  # the old way:    Remove this if statement once we're comfortable it all works
+  cp $target/scripts/cfgs/run_dabble_cfg ~/.run_dabble
+  #
+  # Remove reference to home .study_cfg in all cfgs to let flow default to the study_cfg in dabble_scripts
+  # Other Jenkins jobs will be depending on this transformation to take place
+  sed -i -e 's#\${HOME}/.#\${DABBLE_BASE}/scripts/cfgs/#' $target/scripts/cfgs/study_cfg.*
+  my_DD_cfg="$target/scripts/cfgs/study_cfg"
+fi 
+
+
+#
+# redefine the file locations to a "deployed" area
+#   We could adjust the jenkins flow to faithfully recreate the repo
+#   file structure, but a deployed area seems to make sense and may
+#   make the study flow simpler because it does the same thing
+#
+
+# Remove the existing @DD lines since additional @DD will append
+sed -i -e "/@DD/d" ${my_DD_cfg}  # this must be in $target for the benefit of all Jenkins
+echo '@DD  ${DABBLE_BASE}/release/sim/arch          arch' &gt;&gt; ${my_DD_cfg}
+echo '@DD  ${DABBLE_BASE}/release/sim/mavis_isa_files        mavis_isa_files' &gt;&gt; ${my_DD_cfg}
+echo '@DD  ${DABBLE_BASE}/release/sim/reports       reports' &gt;&gt; ${my_DD_cfg}
+
+# prepare the environment for running a simfig
+cd $target # need to have a cwd that is available to slurm, even if we don't write anything into it
+export PATH=${target}/scripts:$PATH
+
+#
+# Simple little test to see if run_dabble itself starts up.
+#     The -n below means "just print out the commands that would have been run".  We have to specify a workload, so pick "dhry".  We don't actually use it.
+
+run_dabble -n dhry
+
+
+
+# clean up old smoke tests, but don't fail if something goes wrong
+
+find ${PREBUILD_DABBLE_DIR} -maxdepth 1 -name '*smoke*' -mtime +7 -exec rm -rf {} +  || true
+
+# grab some git data to use later
+MY_GIT_HASH=${GIT_HASH##*.}
+MY_GIT_INFO=$(egrep "git_log_info $MY_GIT_HASH"  $PREBUILD_DABBLE_DIR/jenkins.log)
+
+
+date
+#
+# run the smoke simfig
+#
+SMOKE_DEST=${target}_smoke
+my_jenkins_log "starting $SMOKE_DEST"
+
+auto_simfig smoke_p650o $SMOKE_DEST
+
+#
+# gather smoke results into an HTML page for posting to Jenkins build
+#  (more results are published later in script)
+#
+echo "&lt;pre&gt;" &gt;&gt; $RESULTS
+echo $MY_GIT_INFO &gt;&gt; $RESULTS
+cat $target/dabble_git.log &gt;&gt; $RESULTS
+echo "&lt;/pre&gt;" &gt;&gt; $RESULTS
+
+echo "&lt;h1&gt;Smoke test results for $GIT_HASH&lt;/h1&gt;" &gt;&gt; $RESULTS
+echo "&lt;pre&gt;" &gt;&gt; $RESULTS
+get_summary $SMOKE_DEST &gt;&gt; $RESULTS  || true
+echo "&lt;/pre&gt;" &gt;&gt; $RESULTS
+
+
+# check results; fail if results are not equal to 100% pass
+# Note 1: if the analysis is repeated manually, there may be more than one PASS line
+# Note 2: strip off the leading blank which happens if not 100%
+SMOKE_PASS=$(grep -oP '(?&lt;=\().*(?=\.\d+%.*PASS)' $SMOKE_DEST/analysis/func_results | tail -n 1)
+if [ "${SMOKE_PASS# }" -ne "100" ]; then
+    my_jenkins_log "failed $SMOKE_DEST"
+    exit 1
+fi
+my_jenkins_log "passed $SMOKE_DEST"
+
+# check to see if the functional regression for this sha has been run already
+# (should always need a functional regression, but this helps in Jenkins job debugging)
+FUNC_DEST=${target}_func
+if [ ! -d ${FUNC_DEST} ]; then
+    my_jenkins_log "starting $FUNC_DEST"
+    
+   
+    # launch the simfig simulation
+    auto_simfig $STUDY_TYPE $FUNC_DEST
+    
+
+    # Update symlink to latest run func simfig output (even if it doesn't pass) (but not if a custom hash)
+    if [ "${CUSTOM_HASH}" != "" ];  then    
+	    rm -f $PREBUILD_DABBLE_DIR/latest_func_out
+	    ln -s $FUNC_DEST $PREBUILD_DABBLE_DIR/latest_func_out
+    fi    
+
+    # leave some build information scattered around to be helpful to humans
+    echo $MY_GIT_INFO
+    echo "Jenkins Build URL: $BUILD_URL" &gt; $FUNC_DEST/common/jenkins_build.log
+    echo "Jenkins Build: jenkins-${JOB_BASE_NAME}-${BUILD_NUMBER}" &gt;&gt; $FUNC_DEST/common/jenkins_build.log
+    echo "$MY_GIT_INFO" &gt;&gt; $FUNC_DEST/common/jenkins_build.log
+
+fi
+
+### Push functional check results to (Grafana data source, backup to file if needed)
+# gather results into an HTML page for posting to Jenkins build
+
+echo "&lt;h1&gt;Functional test results for $GIT_HASH&lt;/h1&gt;" &gt;&gt; $RESULTS
+echo "&lt;pre&gt;" &gt;&gt; $RESULTS
+get_summary $FUNC_DEST &gt;&gt; $RESULTS  || true
+echo "&lt;/pre&gt;" &gt;&gt; $RESULTS
+
+
+### Determine if we passed the functional test.
+# Use non-0, non-1 exit code to indicate "unstable" build so that Jenkins
+# will color it yellow if we configure Jenkins to do so inthe Advanced section
+# of this build step
+
+MY_EXIT_CODE=1 # be a pessimist
+
+
+FUNC_PASS=$(grep -oP '(?&lt;=\().*(?=\.\d+%.*PASS)' $FUNC_DEST/analysis/func_results | tail -n 1)
+FUNC_PASS="${FUNC_PASS# }"
+
+if [ "${FUNC_PASS}" -eq "100" ]; then
+    MY_EXIT_CODE=0  # Pass!
+elif [ "${FUNC_PASS}" -ge "98" ]; then
+    MY_EXIT_CODE=39  # Tell Jenkins this is an unstable build; guess at a return code that no other tool would return.  See the Advanced button below.
+fi
+
+#
+# Update "latest_func_pass" symlink to point to dabble install that passed
+#   Here "latest" means most recent PR in commit history, so don't update when using "custom hash"
+# Both passing and unstable builds can be used downstream, so update the symlink (but not if running a custom hash)
+if [ "$MY_EXIT_CODE" -ne "1" ] &amp;&amp; [ "${CUSTOM_HASH}" == "" ]; then
+	rm -f $PREBUILD_DABBLE_DIR/latest_func_pass
+	ln -s $target $PREBUILD_DABBLE_DIR/latest_func_pass  
+fi
+my_jenkins_log "completed $FUNC_DEST"
+
+### Gather stats for "functional" regression spreadsheet
+
+MY_PR=$(grep -Po "git_log_info $MY_GIT_HASH #\K\d+" $PREBUILD_DABBLE_DIR/jenkins.log )
+MY_PR_DATE=$(grep -Po "git_log_info $MY_GIT_HASH #\d+ \K\d+/\d+" $PREBUILD_DABBLE_DIR/jenkins.log )
+MY_PR_TIME=$(grep -Po "git_log_info $MY_GIT_HASH #\d+ \d+/\d+\K.* *\d+:\d+ .." $PREBUILD_DABBLE_DIR/jenkins.log )
+MY_PR_COMMENT=$(grep -Po "git_log_info $MY_GIT_HASH #\d+ \d+/\d+.* *\d+:\d+ .. \K.*" $PREBUILD_DABBLE_DIR/jenkins.log )
+
+
+FUNC_PASS_RATE=$(grep -oP '(?&lt;=\().*(?=%.*PASS)' $FUNC_DEST/common/log.summary | tail -n 1)
+FUNC_PASS_RATE="${FUNC_PASS_RATE# }%"
+
+KIPS=$(grep -Po '[0-9\.]+(?= KIPS)' $FUNC_DEST/common/log.summary | tail -n 1)
+EPI=$(grep -Po '[0-9\.]+(?= EPI)' $FUNC_DEST/common/log.summary | tail -n 1)
+IPC=$(grep -Po '[0-9\.]+(?= IPC)' $FUNC_DEST/common/log.summary | tail -n 1)
+
+
+# We don't know if this is a SPECINT or a SPECFP study, so just look for everything and then decide what to do
+SPECINT=$(grep -Po 'specint2k6 \(.*[0-9\.]+(?=$)' $FUNC_DEST/common/log.summary | awk '{print $3}' | tail -n 1)
+SPECFP=$(grep -Po 'specfp2k6 \(.*[0-9\.]+(?=$)' $FUNC_DEST/common/log.summary | awk '{print $3}' | tail -n 1)
+SPECFP_CPP=$(grep -Po 'specfp2k6_cc\+\+_subset \(.*[0-9\.]+(?=$)' $FUNC_DEST/common/log.summary | awk '{print $3}' | tail -n 1)
+
+STUDY_SUITE_LOGGED=$(grep -oP 'spec.*\(\K\w*(?=\))' $FUNC_DEST/common/log.summary | tail -n 1) # in case we need it
+
+# SPEC results that don't exist will just be null
+echo "$MY_GIT_HASH, $MY_PR, $MY_PR_DATE, $MY_PR_TIME, $FUNC_DEST, $FUNC_PASS, $FUNC_PASS_RATE, $KIPS, $EPI, $IPC, $SPECINT, ,$SPECFP, ,$SPECFP_CPP, , $MY_PR_COMMENT"  &gt; $FUNC_DEST/common/func_regr_results.txt
+
+# Get the uniqe string that run-slurm-*.sh created
+UNIQUE_ID=$(grep -Po 'do_wkld.*(?=")' $FUNC_DEST/common/slurm.out | tail -n 1)
+
+# We can use the description setter plugin to grep the logs and set the description.
+#    The restriction is that it can only be one line.  Therefore grab all the useful information and stuff it into a log message
+echo "DataForDescriptionPlugin:$GIT_HASH(${STUDY_TYPE}): $UNIQUE_ID = $MY_PR, $MY_PR_DATE, $MY_PR_TIME, $FUNC_DEST, $FUNC_PASS, $FUNC_PASS_RATE, $KIPS, $EPI, $IPC, $SPECINT, ,$SPECFP, ,$SPECFP_CPP, , $MY_PR_COMMENT"
+
+# Use the script to get the official results rather than the result collected above; never fail the job because of this
+/work/sparta/tools/betl/betl_datacenter_wrapper.sh dabble_regression_etl_runner --database_name perf_database --individual_regression_dir $FUNC_DEST || true
+
+
+# get slurm's idea of how the jobs fared (don't fail the jenkins job if slurmdb is down)
+/work/sparta/scripts/sacct_wc_list_fails $UNIQUE_ID &gt; $FUNC_DEST/common/slurm_fail_summary.log  || true
+
+echo "&lt;h1&gt;Failure Report for wckey $UNIQUE_ID&lt;/h1&gt;" &gt;&gt; $RESULTS
+echo "&lt;pre&gt;" &gt;&gt; $RESULTS
+echo "   (the list will be empty if there are no fails)" &gt;&gt; $RESULTS
+cat $FUNC_DEST/common/slurm_fail_summary.log &gt;&gt; $RESULTS
+echo "&lt;/pre&gt;" &gt;&gt; $RESULTS
+
+exit $MY_EXIT_CODE
+
+### TODOs
+# Where does build_map leave its repo?
+# Move these steps into source code controlled scripts
+
+
+</command>
+      <configuredLocalRules/>
+      <unstableReturn>39</unstableReturn>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.tasks.ArtifactArchiver>
+      <artifacts>html/results.html</artifacts>
+      <allowEmptyArchive>false</allowEmptyArchive>
+      <onlyIfSuccessful>false</onlyIfSuccessful>
+      <fingerprint>false</fingerprint>
+      <defaultExcludes>true</defaultExcludes>
+      <caseSensitive>true</caseSensitive>
+      <followSymlinks>false</followSymlinks>
+    </hudson.tasks.ArtifactArchiver>
+    <htmlpublisher.HtmlPublisher plugin="htmlpublisher@1.29">
+      <reportTargets>
+        <htmlpublisher.HtmlPublisherTarget>
+          <reportName>HTML Report</reportName>
+          <reportDir>html</reportDir>
+          <reportFiles>results.html</reportFiles>
+          <alwaysLinkToLastBuild>false</alwaysLinkToLastBuild>
+          <reportTitles/>
+          <keepAll>false</keepAll>
+          <allowMissing>true</allowMissing>
+          <includes>**/*</includes>
+          <escapeUnderscores>true</escapeUnderscores>
+        </htmlpublisher.HtmlPublisherTarget>
+      </reportTargets>
+    </htmlpublisher.HtmlPublisher>
+    <hudson.plugins.descriptionsetter.DescriptionSetterPublisher plugin="description-setter@1.10">
+      <regexp>^DataForDescriptionPlugin:(.*)</regexp>
+      <regexpForFailed/>
+      <setForMatrix>false</setForMatrix>
+    </hudson.plugins.descriptionsetter.DescriptionSetterPublisher>
+    <jenkins.plugins.slack.SlackNotifier plugin="slack@602.v0da_f7458945d">
+      <baseUrl/>
+      <teamDomain>sifive</teamDomain>
+      <authToken/>
+      <tokenCredentialId>SlackJenkinsIntegrationToken</tokenCredentialId>
+      <botUser>false</botUser>
+      <room>#dabble-regression</room>
+      <sendAsText>false</sendAsText>
+      <iconEmoji/>
+      <username/>
+      <startNotification>false</startNotification>
+      <notifySuccess>true</notifySuccess>
+      <notifyAborted>false</notifyAborted>
+      <notifyNotBuilt>false</notifyNotBuilt>
+      <notifyUnstable>true</notifyUnstable>
+      <notifyRegression>false</notifyRegression>
+      <notifyFailure>false</notifyFailure>
+      <notifyEveryFailure>true</notifyEveryFailure>
+      <notifyBackToNormal>false</notifyBackToNormal>
+      <notifyRepeatedFailure>false</notifyRepeatedFailure>
+      <includeTestSummary>false</includeTestSummary>
+      <includeFailedTests>false</includeFailedTests>
+      <uploadFiles>false</uploadFiles>
+      <artifactIncludes>html/results.html</artifactIncludes>
+      <commitInfoChoice>AUTHORS_AND_TITLES</commitInfoChoice>
+      <includeCustomMessage>true</includeCustomMessage>
+      <customMessage>Built commit: $GIT_COMMIT
+Git branch: $GIT_BRANCH
+Commit on GitHub: https://github.com/sifive/dabble/commit/$GIT_COMMIT
+Results Summary Logs: $BUILD_URL/artifact/html/results.html</customMessage>
+      <customMessageSuccess/>
+      <customMessageAborted/>
+      <customMessageNotBuilt/>
+      <customMessageUnstable/>
+      <customMessageFailure/>
+    </jenkins.plugins.slack.SlackNotifier>
+    <hudson.plugins.parameterizedtrigger.BuildTrigger plugin="parameterized-trigger@2.43">
+      <configs>
+        <hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+          <configs>
+            <hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+              <properties>DABBLE_BUILD=latest
+STUDY_TYPE=corr_p650o
+PERF_SLURM_ACCOUNT=perf_bulk
+PERF_SLURM_PARTITION=redhat,redhat_cloud</properties>
+              <textParamValueOnNewLine>false</textParamValueOnNewLine>
+            </hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+          </configs>
+          <projects>dabble-custom-study</projects>
+          <condition>UNSTABLE_OR_BETTER</condition>
+          <triggerWithNoParameters>false</triggerWithNoParameters>
+          <triggerFromChildProjects>false</triggerFromChildProjects>
+        </hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+        <hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+          <configs>
+            <hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+              <properties>DABBLE_BUILD=latest
+STUDY_TYPE=full_p650o
+PERF_SLURM_ACCOUNT=perf_bulk
+PERF_SLURM_PARTITION=redhat,redhat_cloud</properties>
+              <textParamValueOnNewLine>false</textParamValueOnNewLine>
+            </hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+          </configs>
+          <projects>dabble-custom-study</projects>
+          <condition>UNSTABLE_OR_BETTER</condition>
+          <triggerWithNoParameters>false</triggerWithNoParameters>
+          <triggerFromChildProjects>false</triggerFromChildProjects>
+        </hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+        <hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+          <configs>
+            <hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+              <properties>DABBLE_BUILD=latest
+STUDY_TYPE=full_bode
+PERF_SLURM_ACCOUNT=perf_bulk
+PERF_SLURM_PARTITION=redhat,redhat_cloud</properties>
+              <textParamValueOnNewLine>false</textParamValueOnNewLine>
+            </hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+          </configs>
+          <projects>dabble-custom-study</projects>
+          <condition>UNSTABLE_OR_BETTER</condition>
+          <triggerWithNoParameters>false</triggerWithNoParameters>
+          <triggerFromChildProjects>false</triggerFromChildProjects>
+        </hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+        <hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+          <configs>
+            <hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+              <properties>DABBLE_BUILD=latest
+STUDY_TYPE=full_cart
+PERF_SLURM_ACCOUNT=perf_bulk
+PERF_SLURM_PARTITION=redhat,redhat_cloud</properties>
+              <textParamValueOnNewLine>false</textParamValueOnNewLine>
+            </hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+          </configs>
+          <projects>dabble-custom-study</projects>
+          <condition>UNSTABLE_OR_BETTER</condition>
+          <triggerWithNoParameters>false</triggerWithNoParameters>
+          <triggerFromChildProjects>false</triggerFromChildProjects>
+        </hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+      </configs>
+    </hudson.plugins.parameterizedtrigger.BuildTrigger>
+    <hudson.plugins.ws__cleanup.WsCleanup plugin="ws-cleanup@0.40">
+      <patterns class="empty-list"/>
+      <deleteDirs>false</deleteDirs>
+      <skipWhenFailed>false</skipWhenFailed>
+      <cleanWhenSuccess>true</cleanWhenSuccess>
+      <cleanWhenUnstable>true</cleanWhenUnstable>
+      <cleanWhenFailure>false</cleanWhenFailure>
+      <cleanWhenNotBuilt>true</cleanWhenNotBuilt>
+      <cleanWhenAborted>true</cleanWhenAborted>
+      <notFailBuild>false</notFailBuild>
+      <cleanupMatrixParent>false</cleanupMatrixParent>
+      <externalDelete/>
+      <disableDeferredWipeout>false</disableDeferredWipeout>
+    </hudson.plugins.ws__cleanup.WsCleanup>
+  </publishers>
+  <buildWrappers>
+    <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.40">
+      <deleteDirs>false</deleteDirs>
+      <cleanupParameter/>
+      <externalDelete/>
+      <disableDeferredWipeout>false</disableDeferredWipeout>
+    </hudson.plugins.ws__cleanup.PreBuildCleanup>
+    <hudson.plugins.timestamper.TimestamperBuildWrapper plugin="timestamper@1.17"/>
+  </buildWrappers>
+</project>

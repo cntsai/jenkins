@@ -1,0 +1,108 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>Regression on Benchmark Scores driven by wit/wake</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>7</daysToKeep>
+        <numToKeep>7</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.0.2">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+      <configVersion>1</configVersion>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+  </properties>
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@4.3.0">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <name>freedom-e-sdk-infra</name>
+        <url>git@github.com:sifive/product-coreip-sifive.git</url>
+        <credentialsId>ad25d95a-4a30-4cc9-bda9-e836d51af0b9</credentialsId>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>*/master</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+    <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+    <submoduleCfg class="list"/>
+    <extensions/>
+  </scm>
+  <assignedNode>freedom-metal-small</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>true</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers>
+    <hudson.triggers.TimerTrigger>
+      <spec>H H(0-7) * * *</spec>
+    </hudson.triggers.TimerTrigger>
+  </triggers>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>hostname
+env
+pwd
+
+export PATH_TO_PRODUCT_COREIP_SIFIVE=$(realpath .)
+
+export JENKINS_BUILDS_DIR=/scratch/jenkins/archived-builds
+
+# Load wit/wake modules
+. /sifive/tools/Modules/3.2.10/init/sh
+module load sifive/wake/0.15.2
+module load sifive/wit/0.10.1
+module load riscv-tools
+
+# Create the Jenkins build dir if it doesn&apos;t exist
+mkdir -p $JENKINS_BUILDS_DIR
+cd $JENKINS_BUILDS_DIR
+echo $PWD
+
+# Create the build directory
+mkdir -p $JOB_NAME/$BUILD_NUMBER
+cd $JOB_NAME/$BUILD_NUMBER
+echo $PWD
+
+# Initialize the workspace
+wit init workspace -a $PATH_TO_PRODUCT_COREIP_SIFIVE -a git@github.com:sifive/environment-sanmateo-sifive.git
+cd workspace
+
+# Update to the latest Freedom E SDK, Freedom Metal, and Freedom DeviceTree Tools
+git -C freedom-e-sdk checkout master
+git -C freedom-e-sdk pull
+
+git -C freedom-metal checkout master
+git -C freedom-metal pull
+
+git -C freedom-devicetree-tools checkout master
+git -C freedom-devicetree-tools pull
+
+# Initialize wake
+wake --init .
+
+# Run benchmarks on all standard cores
+# Timeout set to 12 hours
+timeout 12h wake -j4 --no-tty test Verilator allSDKBenchmarks all standardJSONs 2&gt;error.log
+
+# Measure and compare scores against their expected value
+bash ./$JOB_BASE_NAME/scripts/score_benchmarks_standard_coreip build/$JOB_BASE_NAME/ 0.05</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>

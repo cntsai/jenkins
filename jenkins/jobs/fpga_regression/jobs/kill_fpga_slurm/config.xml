@@ -1,0 +1,64 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.41">
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.3"/>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.4">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>KILL_SLURM_ID</name>
+          <description>the SLURM ID to kill. For multiple ID, seperate with &apos;;&apos;</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.93">
+    <script>// sAccount: The slurm account
+def sAccount = &apos;verif&apos;
+def confBuildDir
+def jid
+def des
+def dirExist
+def buildLogName
+
+node (&apos;tiny_rhel8&apos;) {
+    ws(&quot;/scratch/jenkins/workspace/$JOB_NAME/$BUILD_ID&quot;) {
+        sh &quot;squeue --cluster testbed&quot;
+        jid = sh (script: &quot;salloc --partition boardtest -c 4 --clusters testbed --constraint testboard_arty100 --account=${sAccount} --job-name=emu_${env.BUILD_NUMBER} --time=1 -D /tmp --no-shell 2&gt;&amp;1|grep Granted|grep -oE &apos;[0-9]+&apos;&quot;,
+            returnStdout: true).trim()
+        
+        def slurm_ids = env.KILL_SLURM_ID.tokenize(&apos;;&apos;)
+        
+        //kill input job
+        for(id in slurm_ids) {
+            sh &quot;&quot;&quot;
+                srun_cmd=&quot;srun --clusters=testbed --account=${sAccount} --export=ALL --jobid=${jid} -D /tmp&quot;
+                \$srun_cmd scancel ${id}
+            &quot;&quot;&quot;
+        }
+        //kill current job
+        sh &quot;&quot;&quot;
+            srun_cmd=&quot;srun --clusters=testbed --account=${sAccount} --export=ALL --jobid=${jid} -D /tmp&quot;
+            \$srun_cmd scancel ${jid}
+        &quot;&quot;&quot;
+        
+        sh &quot;squeue --cluster testbed&quot;
+    }
+}</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

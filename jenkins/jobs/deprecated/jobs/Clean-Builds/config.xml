@@ -1,0 +1,149 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.25">
+  <actions/>
+  <description>Clean up all archived builds more than a week old</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>10</daysToKeep>
+        <numToKeep>-1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty/>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableResumeJobProperty/>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.0.1">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers>
+        <hudson.triggers.TimerTrigger>
+          <spec>H */4 * * *</spec>
+        </hudson.triggers.TimerTrigger>
+      </triggers>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.57">
+    <script>def cleanUpArchivedBuilds(nodename, days_old = 4) {
+    def ssh = &quot;/usr/bin/ssh -o StrictHostKeyChecking=no $nodename&quot;
+    
+    echo &quot;Current utilization on [$nodename]&quot;
+    try {
+        sh &quot;$ssh df -H --local&quot;
+    } finally {
+        // To save a directory, leave a note below and add to the &apos;find&apos; command, for example: -not -name 21953
+        // Temporarily saving 21953 per jchang request VI-500
+        // Temporarily saving 259 per jchang request
+        echo &quot;Removing old archived builds from [$nodename]&quot;
+        sh &quot;$ssh mkdir -p /scratch/jenkins/archived-builds&quot;
+        echo &quot;Making Sure Permissions are Correct&quot;
+        try {
+            //$ssh &apos;export days_old=$days_old; echo find /scratch/jenkins/archived-builds/ -depth -mindepth 1 -maxdepth 7 -mtime +$days_old -name &apos;[0-9]*&apos; -not -name 21953 -not -name 259 -prune -type d -print | grep &apos;/[0-9]*$&apos; | grep -v &apos;.git/objects&apos; | xargs -n1 chmod -R u+w
+            sh &quot;$ssh &apos;export days_old=$days_old; echo ZmluZCAvc2NyYXRjaC9qZW5raW5zL2FyY2hpdmVkLWJ1aWxkcy8gLWRlcHRoIC1taW5kZXB0aCAxIC1tYXhkZXB0aCA3IC1tdGltZSArJGRheXNfb2xkIC1uYW1lICdbMC05XSonIC1ub3QgLW5hbWUgMjE5NTMgLW5vdCAtbmFtZSAyNTkgLXBydW5lIC10eXBlIGQgLXByaW50IHwgZ3JlcCAnL1swLTldKiQnIHwgZ3JlcCAtdiAnLmdpdC9vYmplY3RzJyB8IHhhcmdzIC1uMSBjaG1vZCAtUiB1K3c= | base64 -d | bash&apos;&quot;
+        } catch(Exception ex) {
+            echo &quot;No results To Remove Found.. Exiting&quot;
+            return
+        }
+        echo &quot;Printing Files that will be Removed..&quot;
+        // sh &quot;$ssh find /scratch/jenkins/archived-builds/ -depth -mindepth 1 -maxdepth 7 -mtime +$days_old -name \&apos;[0-9]*\&apos; -not -name 21953 -not -name 259 -prune -type d -print | grep \&apos;/[0-9]*\$\&apos; | grep -v \&apos;.git/objects\&apos; | xargs -n1 echo&quot;
+        sh &quot;$ssh &apos;export days_old=$days_old; echo ZmluZCAvc2NyYXRjaC9qZW5raW5zL2FyY2hpdmVkLWJ1aWxkcy8gLWRlcHRoIC1taW5kZXB0aCAxIC1tYXhkZXB0aCA3IC1tdGltZSArJGRheXNfb2xkIC1uYW1lICdbMC05XSonIC1ub3QgLW5hbWUgMjE5NTMgLW5vdCAtbmFtZSAyNTkgLXBydW5lIC10eXBlIGQgLXByaW50IHwgZ3JlcCAnL1swLTldKiQnIHwgZ3JlcCAtdiAnLmdpdC9vYmplY3RzJyB8IHhhcmdzIGVjaG8= | base64 -d | bash&apos;&quot;
+        echo &quot;Removing Files&quot;
+        // sh &quot;$ssh find /scratch/jenkins/archived-builds/ -depth -mindepth 1 -maxdepth 7 -mtime +$days_old -name \&apos;[0-9]*\&apos; -not -name 21953 -not -name 259 -prune -type d -print | grep \&apos;/[0-9]*\$\&apos; | grep -v \&apos;.git/objects\&apos; | xargs rm -rf&quot;
+        sh &quot;$ssh &apos;export days_old=$days_old; echo ZmluZCAvc2NyYXRjaC9qZW5raW5zL2FyY2hpdmVkLWJ1aWxkcy8gLWRlcHRoIC1taW5kZXB0aCAxIC1tYXhkZXB0aCA3IC1tdGltZSArJGRheXNfb2xkIC1uYW1lICdbMC05XSonIC1ub3QgLW5hbWUgMjE5NTMgLW5vdCAtbmFtZSAyNTkgLXBydW5lIC10eXBlIGQgLXByaW50IHwgZ3JlcCAnL1swLTldKiQnIHwgZ3JlcCAtdiAnLmdpdC9vYmplY3RzJyB8IHhhcmdzIHJtIC1yZg== | base64 -d | bash&apos;&quot;
+        echo &quot;@tmp and WStmp file cleanup&quot;
+        //Remove the OLD WStmp directories
+        // find /scratch/jenkins/archived-builds/ -depth -mindepth 1 -maxdepth 7 -mtime +$days_old -name &apos;[0-9]*&apos; -prune -type d -print | grep &apos;.*WStmp&apos; | xargs -n1 echo
+        sh &quot;$ssh &apos;export days_old=$days_old; echo ZmluZCAvc2NyYXRjaC9qZW5raW5zL2FyY2hpdmVkLWJ1aWxkcy8gLWRlcHRoIC1taW5kZXB0aCAxIC1tYXhkZXB0aCA3IC1tdGltZSArJGRheXNfb2xkIC1uYW1lICdbMC05XSonIC1ub3QgLW5hbWUgMjE5NTMgLW5vdCAtbmFtZSAyNTkgLXBydW5lIC10eXBlIGQgLXByaW50IHwgZ3JlcCAnLipXU3RtcCcgfCB4YXJncyBybSAtcmY= | base64 -d | bash&apos; &quot;
+        //Remove the OLD @tmp dirs
+        //find /scratch/jenkins/archived-builds/ -depth -mindepth 1 -maxdepth 7 -mtime +$days_old -name &apos;[0-9]*&apos; -not -name 21953 -not -name 259 -prune -type d -print | grep &apos;.*@tmp&apos; | xargs rm -rf
+        sh &quot;$ssh &apos;export days_old=$days_old; echo ZmluZCAvc2NyYXRjaC9qZW5raW5zL2FyY2hpdmVkLWJ1aWxkcy8gLWRlcHRoIC1taW5kZXB0aCAxIC1tYXhkZXB0aCA3IC1tdGltZSArJGRheXNfb2xkIC1uYW1lICdbMC05XSonIC1ub3QgLW5hbWUgMjE5NTMgLW5vdCAtbmFtZSAyNTkgLXBydW5lIC10eXBlIGQgLXByaW50IHwgZ3JlcCAnLipAdG1wJyB8IHhhcmdzIHJtIC1yZg== | base64 -d | bash&apos; &quot;
+    
+        echo &quot;Removing old workspaces from [$nodename]&quot;
+        sh &quot;$ssh mkdir -p /scratch/jenkins/workspace&quot;
+        sh &quot;$ssh find /scratch/jenkins/workspace/ -depth -mindepth 1 -maxdepth 1 -mtime +$days_old -not -path /scratch/jenkins/workspace/${env.JOB_NAME} -type d -print -exec rm -rf {} +&quot;
+    }
+}
+// FIXME: This node list should be generated programatically to ensure that
+// it is consistent with active nodes in the standard partition.
+nodes = [
+  // &apos;pet&apos; hosts
+  // &apos;alpha&apos;,
+  //&apos;delta00&apos;,
+  &apos;delta01&apos;,
+  &apos;delta02&apos;,
+  &apos;delta03&apos;,
+  // &apos;cattle&apos; hosts
+  &apos;sigma00&apos;,
+  &apos;sigma01&apos;,
+  &apos;sigma02&apos;,
+  &apos;sigma03&apos;,
+  &apos;sigma04&apos;,
+  &apos;sigma05&apos;,
+  &apos;sigma06&apos;,
+  &apos;sigma07&apos;,
+  &apos;sigma08&apos;,
+  &apos;sigma09&apos;,
+  &apos;sigma10&apos;,
+  &apos;sigma11&apos;,
+  &apos;sigma12&apos;,
+  &apos;sigma13&apos;,
+  &apos;sigma14&apos;,
+//&apos;sigma15&apos;,
+//&apos;sigma16&apos;,
+  &apos;sigma17&apos;,
+  &apos;sigma18&apos;,
+  &apos;sigma19&apos;,
+  &apos;sigma20&apos;,
+//&apos;sigma21&apos;,
+//&apos;sigma22&apos;,
+  &apos;sigma23&apos;,
+  &apos;sigma24&apos;,
+  &apos;sigma25&apos;,
+  &apos;sigma26&apos;,
+  &apos;sigma27&apos;,
+  &apos;sigma28&apos;,
+  &apos;sigma29&apos;,
+  &apos;sigma30&apos;,
+  &apos;sigma31&apos;,
+  &apos;sigma32&apos;,
+]
+
+stage(&apos;Clean NFS&apos;) {
+    timestamps {
+        node(&apos;slurm_agent&amp;&amp;tiny&apos;) {
+            sh &quot;find /nettmp/netapp1a/jenkins/ -depth -mindepth 1 -maxdepth 2 -mtime +7 -type d -print -exec rm -rf {} +&quot;
+        }
+    }
+}
+
+stage(&apos;Clean Local Disk&apos;) {
+    def nodeBranch = [:]
+
+    nodes.each { nodeName -&gt;
+        nodeBranch[&quot;Clean $nodeName&quot;] = {
+            timestamps {
+                stage(&quot;Clean $nodeName&quot;) {
+                    timeout(time: 1, unit: &apos;HOURS&apos;) {
+                        node(&apos;slurm_agent&amp;&amp;tiny&apos;) {
+                            cleanUpArchivedBuilds(nodeName)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    parallel(nodeBranch)
+}</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>true</disabled>
+</flow-definition>

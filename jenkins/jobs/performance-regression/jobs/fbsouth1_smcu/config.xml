@@ -1,0 +1,362 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>regression for facebook south1 config</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.1.1"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>-1</daysToKeep>
+        <numToKeep>20</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.0.3">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>freedom-metal-small</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>true</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers>
+    <hudson.triggers.TimerTrigger>
+      <spec>H H(0-7) * * *</spec>
+    </hudson.triggers.TimerTrigger>
+  </triggers>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>hostname
+env
+pwd
+
+
+export JENKINS_BUILDS_DIR=/scratch/jenkins/archived-builds
+
+# Load wit/wake modules
+. /sifive/tools/Modules/3.2.10/init/sh
+#module load sifive/wake/0.17.1
+#module load sifive/wit/0.11.1
+#module load riscv-tools
+#module load python/python/3.7.0
+python --version
+
+# Create the Jenkins build dir if it doesn&apos;t exist
+mkdir -p $JENKINS_BUILDS_DIR
+cd $JENKINS_BUILDS_DIR
+echo $PWD
+
+mkdir -p $JOB_NAME/$BUILD_NUMBER
+cd $JOB_NAME/$BUILD_NUMBER
+echo $PWD
+
+#git clone -b cxmt_fb_norisours_rebase git@github.com:sifive/federation.git
+git clone -b sc_fb_integrate git@github.com:sifive/federation.git
+
+cd federation
+export FEDERATION_GIT_HASH=`git rev-parse --short HEAD`
+export FEDERATION_ROOT=`pwd`
+export DASHBOARD_INFO=&quot;10.14.135.139,runner,kNHUUhP5AZkthSC8,8202,federation,${FEDERATION_GIT_HASH},fbsouth1_smcu_sim,e31&quot;
+export TEST_TIMESTAMP=`date &apos;+%m%d%Y%X&apos;`
+
+
+./scripts/quick-submodule-update
+. rc.d/riscv-tools.bashrc
+BUILD_DIR=builds   ./generate-build fbsouth1_smcu_sim
+BUILD_DIR=build_sc ./generate-build fbsouth1_smcu_sim_sc
+
+#git clone git@github.com:sifive/benchmark-mem_probe.git software/tests/benchmark-mem_probe
+git clone  -b adjust_macro git@github.com:sifive/benchmark-mem_probe.git software/tests/benchmark-mem_probe
+git clone  git@github.com:sifive/ooo_probe.git          software/tests/ooo_probe
+git clone  git@github.com:sifive/lsu_probe.git          software/tests/lsu_probe
+git clone  git@github.com:sifive/benchmarks.git         software/tests/benchmark_script
+git clone  git@github.com:sifive/systemc_ipdelivery.git software/tests/systemc_ipdelivery
+git clone  git@github.com:sifive/benchmark-frontend.git software/tests/benchmark-frontend
+
+#link GEM5
+ln -sf /work/sifive-gem5 software/tests/systemc_ipdelivery/sifive-gem5
+#probuf for systemc
+#export LD_LIBRARY_PATH=/work/sifive-gem5/lib:${LD_LIBRARY_PATH}
+export LD_LIBRARY_PATH=/work/sifive-gem5/build/SF_RISCV:/work/sifive-gem5/lib:${LD_LIBRARY_PATH}
+
+export MEM_PROBE_ROOT=`realpath software/tests/benchmark-mem_probe`
+export OOO_PROBE_ROOT=`realpath software/tests/ooo_probe`
+export LSU_PROBE_ROOT=`realpath software/tests/lsu_probe`
+export BENCH_SCRIPT=`realpath software/tests/benchmark_script`
+export SYSTEMC_IP=`realpath software/tests/systemc_ipdelivery`
+export FRONTEND_ROOT=`realpath software/tests/benchmark-frontend`
+
+
+cd build_sc/fbsouth1_smcu_sim_sc
+pwd
+. ./load-modules
+echo &quot;$LD_LIBRARY_PATH&quot;
+make run-systemc MODEL=&quot;CoreIPSubsystemAllPortRAMTestHarnessSC&quot; TEST_OUTLINE=${FEDERATION_ROOT}/software/tests/systemc_ipdelivery/test-outlines/systemc_fp_bw.outline EXTRA=enable LD_LIBRARY_PATH=${LD_LIBRARY_PATH}
+
+python3 -m venv venv
+. venv/bin/activate
+python3 -m pip install cryptography
+python3 -m pip install pymysql
+python ${SYSTEMC_IP}/scripts/parse_frontport_bandwidth.py --simlog sim/sim-systemc/systemc_fp_bw.outline --to_dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP&quot;
+
+deactivate
+
+cd ${FEDERATION_ROOT}
+
+cd builds/fbsouth1_smcu_sim 
+pwd
+ls
+. ./load-modules
+python --version
+which python
+make sim
+cd sim
+
+sed -i &quot;/score_check/d&quot; $FEDERATION_ROOT/software/tests/dhrystone/manifest.yml
+sed -i &quot;/score_check/d&quot; $FEDERATION_ROOT/software/tests/coremark/manifest.yml
+
+#./sitest @$FEDERATION_ROOT/software/tests/ooo_probe/script/ooo_probe.outline +verbose &gt;&amp; /dev/null
+#./sitest -j3 @$LSU_PROBE_ROOT/script/lsu_probe.outline +verbose &gt;&amp; /dev/null --nobuild
+#./sitest -j4 @$FEDERATION_ROOT/software/tests/benchmark-mem_probe/script/mem_probe.outline +verbose &gt;&amp; /dev/null 
+#./sitest dhrystone +verbose --nobuild &gt;&amp; /dev/null
+#./sitest coremark  +verbose --nobuild &gt;&amp; /dev/null
+
+cat  &gt; fbsouth_perf.outline  &lt;&lt; EOF
+benchmark_names = %w[
+    coremark
+    dhrystone
+]
+benchmark_names.each do |name|
+run_test( configure_test(
+        name: name,
+        raw_plusargs: [&quot;+profile&quot;],
+        program: {
+            mem:       &apos;memory_mem0&apos;,
+            data_mem:  &apos;memory_mem0&apos;,
+            text_mem:  &apos;memory_mem0&apos;,
+            cppmacros: %w[BENCHMARK_NO_PRINT],
+            env:       &apos;abi&apos;,
+        },
+
+    ))
+end
+bestset_test_names = %w[
+    ooo_probe/TestAdd
+    ooo_probe/TestAnd
+    ooo_probe/TestAuipc
+    ooo_probe/TestCadd
+    ooo_probe/TestCaddi
+    ooo_probe/TestCli
+    ooo_probe/TestCmv
+    ooo_probe/TestCslli
+    ooo_probe/TestDiv
+    ooo_probe/TestLui
+    ooo_probe/TestMul
+    ooo_probe/TestOr
+    ooo_probe/TestRem
+    ooo_probe/TestSll
+    ooo_probe/TestSlt
+    ooo_probe/TestSra
+    ooo_probe/TestSrl
+    ooo_probe/TestSub
+    ooo_probe/TestXor
+    benchmark-mem_probe/stream
+    benchmark-mem_probe/matrix_multiply
+    benchmark-mem_probe/bw
+    benchmark-mem_probe/mem_probe
+    lsu_probe/TestForwarding
+    lsu_probe/TestInterleave
+    lsu_probe/TestByGroup
+]
+
+bestset_test_names.each do |name|
+run_test( configure_test(
+        name: name,
+        raw_plusargs: [&quot;+profile&quot;],
+        program: {
+            mem:       &apos;memory_mem0&apos;,
+            data_mem:  &apos;memory_mem0&apos;,
+            text_mem:  &apos;memory_mem0&apos;,
+            env:       &apos;abi&apos;,
+        },
+
+    ))
+end
+
+mem_test = %w[
+    benchmark-mem_probe/bw
+    benchmark-mem_probe/mem_probe
+]
+
+none_cacheable_target_block = %w[
+    tl_inter_sys_port_mem0
+]
+
+mem_test.product(none_cacheable_target_block).each do |test,target|
+  run_test( configure_test(
+        name: test,
+        raw_plusargs: [&quot;+profile&quot;],
+        subdir:  target,
+        program: {
+            mem:       target,
+            data_mem:  target,
+            text_mem:  &apos;memory_mem0&apos;,
+            cppmacros: %w[RANGE=4],
+            env:       &apos;abi&apos;,
+        },
+   ))
+end
+
+frontend_probe_test = %w[
+    benchmark-frontend/j64b_aligned
+    benchmark-frontend/j128b_unaligned
+]
+text_mem_list = %w[
+    memory_mem0
+    tl_inter_sys_port_mem0
+]
+cacheable_test_range = [256,128,64,32,16,8,4]
+
+
+frontend_probe_test.product( text_mem_list , cacheable_test_range ) do |test,target,size|
+run_test( configure_test(
+      name: test,
+      raw_plusargs: [&quot;+profile&quot;],
+      subdir:  target+&apos;/&apos;+size.to_s,
+      program: {
+          mem:       &apos;memory_mem0&apos;,
+          data_mem:  &apos;memory_mem0&apos;,
+          text_mem:  target,
+          cppmacros: [ &quot;TEST_SIZE=&quot;+size.to_s ,&quot;ITERATION=4&quot;],
+          env:       &apos;abi&apos;,
+      },
+ ))
+end
+
+frontend_probe_test.each do |test|
+  run_test( configure_test(
+        name: test,
+        raw_plusargs: [&quot;+profile&quot;],
+        subdir:  &quot;itim_mem/8&quot;,
+        program: {
+            mem:       &apos;memory_mem0&apos;,
+            data_mem:  &apos;memory_mem0&apos;,
+            text_mem:  &apos;itim_mem&apos;,
+            cppmacros: %w[TEST_SIZE=8 ITERATION=4],
+            env:       &apos;abi&apos;,
+        },
+   ))
+end
+
+
+EOF
+
+./sitest -j8 @fbsouth_perf.outline +verbose
+
+#python virtual env
+module load python/python/3.7.0
+python3 -m venv venv
+. venv/bin/activate
+python3 -m pip install cryptography
+python3 -m pip install pymysql
+
+
+python $MEM_PROBE_ROOT/mem_probe/analyze_probe_result.py         \
+    --rtlOut sim/fbsouth_perf.outline/benchmark-mem_probe/mem_probe/simulation.err  \
+    --detail \
+    --to_dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP,memory_mem0&quot;
+python $MEM_PROBE_ROOT/bw/analyze_rtlsim_result.py               \
+    --rtlOut sim/fbsouth_perf.outline/benchmark-mem_probe/bw/simulation.err         \
+    --detail \
+    --to_dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP,memory_mem0&quot;
+python $MEM_PROBE_ROOT/mem_probe/analyze_probe_result.py         \
+    --rtlOut sim/fbsouth_perf.outline/tl_inter_sys_port_mem0/benchmark-mem_probe/mem_probe/simulation.err  \
+    --detail \
+    --to_dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP,tl_inter_sys_port_mem0&quot;
+python $MEM_PROBE_ROOT/bw/analyze_rtlsim_result.py               \
+    --rtlOut sim/fbsouth_perf.outline/tl_inter_sys_port_mem0/benchmark-mem_probe/bw/simulation.err         \
+    --detail \
+    --to_dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP,tl_inter_sys_port_mem0&quot;
+
+python $MEM_PROBE_ROOT/stream/analyze_rtlsim_result.py           --rtlOut sim/fbsouth_perf.outline/benchmark-mem_probe/stream/simulation.err           --detail --to_dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP&quot;
+python $MEM_PROBE_ROOT/matrix_multiply/analyze_rtlsim_result.py  --rtlOut sim/fbsouth_perf.outline/benchmark-mem_probe/matrix_multiply/simulation.err  --detail --to_dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP&quot;
+
+
+#python $MEM_PROBE_ROOT/mem_probe/analyze_probe_result.py         --rtlOut sim/mem_probe.outline/benchmark-mem_probe/mem_probe/simulation.err        --detail --to_dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP&quot;
+#python $MEM_PROBE_ROOT/bw/analyze_rtlsim_result.py               --rtlOut sim/mem_probe.outline/benchmark-mem_probe/bw/simulation.err               --detail --to_dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP&quot;
+#python $MEM_PROBE_ROOT/stream/analyze_rtlsim_result.py           --rtlOut sim/mem_probe.outline/benchmark-mem_probe/stream/simulation.err           --detail --to_dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP&quot;
+#python $MEM_PROBE_ROOT/matrix_multiply/analyze_rtlsim_result.py  --rtlOut sim/mem_probe.outline/benchmark-mem_probe/matrix_multiply/simulation.err  --detail --to_dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP&quot;
+
+#OOO_ARRAY=(Add And Auipc Cadd Caddi Cli Cmv Cslli Div Lui Mul Or Rem Sll Slt Sra Srl Sub Xor)
+#for i in ${OOO_ARRAY[@]}
+#do
+#    OOO_DASHBOARD_INFO=${DASHBOARD_INFO}&quot;,$TEST_TIMESTAMP,$i&quot;
+#    python $OOO_PROBE_ROOT/script/analyze_probe_result.py --rtlOut  sim/ooo_probe.outline/ooo_probe/Test${i}/simulation.err --to_dashboard $OOO_DASHBOARD_INFO
+#done
+
+
+#python $BENCH_SCRIPT/scripts/parse_benchmark_score.py -r sim/coremark/simulation.err  -e sim/coremark/program.elf  -b coremark  -f 1 -i 10  --dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP&quot;
+#python $BENCH_SCRIPT/scripts/parse_benchmark_score.py -r sim/dhrystone/simulation.err -e sim/dhrystone/program.elf -b dhrystone -f 1 -i 500 --dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP&quot;
+
+#python $LSU_PROBE_ROOT/script/analyze_probe_result.py --rtlOut sim/lsu_probe.outline/lsu_probe/TestForwarding/simulation.err --probeType TestForwarding --to_dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP&quot;
+#python $LSU_PROBE_ROOT/script/analyze_probe_result.py --rtlOut sim/lsu_probe.outline/lsu_probe/TestInterleave/simulation.err --probeType TestInterleave --to_dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP&quot;
+#python $LSU_PROBE_ROOT/script/analyze_probe_result.py --rtlOut sim/lsu_probe.outline/lsu_probe/TestByGroup/simulation.err    --probeType TestByGroup    --to_dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP&quot;
+
+
+
+OOO_ARRAY=(Add And Auipc Cadd Caddi Cli Cmv Cslli Div Lui Mul Or Rem Sll Slt Sra Srl Sub Xor)
+for i in ${OOO_ARRAY[@]}
+do
+    OOO_DASHBOARD_INFO=${DASHBOARD_INFO}&quot;,$TEST_TIMESTAMP,$i&quot;
+    python $OOO_PROBE_ROOT/script/analyze_probe_result.py --rtlOut  sim/fbsouth_perf.outline/ooo_probe/Test${i}/simulation.err --to_dashboard $OOO_DASHBOARD_INFO
+done
+
+
+python $BENCH_SCRIPT/scripts/parse_benchmark_score.py -r sim/fbsouth_perf.outline/coremark/simulation.err  -e sim/fbsouth_perf.outline/coremark/program.elf  -b coremark  -f 1 -i 10  --dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP&quot;
+python $BENCH_SCRIPT/scripts/parse_benchmark_score.py -r sim/fbsouth_perf.outline/dhrystone/simulation.err -e sim/fbsouth_perf.outline/dhrystone/program.elf -b dhrystone -f 1 -i 500 --dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP&quot;
+python $LSU_PROBE_ROOT/script/analyze_probe_result.py --rtlOut sim/fbsouth_perf.outline/lsu_probe/TestForwarding/simulation.err --probeType TestForwarding --to_dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP&quot;
+python $LSU_PROBE_ROOT/script/analyze_probe_result.py --rtlOut sim/fbsouth_perf.outline/lsu_probe/TestInterleave/simulation.err --probeType TestInterleave --to_dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP&quot;
+python $LSU_PROBE_ROOT/script/analyze_probe_result.py --rtlOut sim/fbsouth_perf.outline/lsu_probe/TestByGroup/simulation.err    --probeType TestByGroup    --to_dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP&quot;
+
+
+for i in `find sim/fbsouth_perf.outline  -type d -name &quot;benchmark-frontend&quot;`
+do
+    echo $i
+    for j in `find $i -name &quot;simulation.err&quot;`
+    do
+        DIRNAME=`dirname $i`
+        DIRNAME2=`dirname $DIRNAME`
+        TARGET_MEM=`basename $DIRNAME2`
+        python $FRONTEND_ROOT/analyze_rtlsim_result.py \
+            --rtlOut $j \
+            --detail    \
+            --to_dashboard &quot;$DASHBOARD_INFO,$TEST_TIMESTAMP,$TARGET_MEM&quot;
+
+    done
+done
+
+
+
+ls -al
+
+</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>

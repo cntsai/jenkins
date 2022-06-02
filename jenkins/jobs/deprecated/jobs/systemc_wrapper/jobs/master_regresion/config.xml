@@ -1,0 +1,145 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>regression for all standard and spanning config </description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.1.1"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>3</daysToKeep>
+        <numToKeep>3</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>CONFIG_JOBS</name>
+          <description>Select the number of parallel jobs, which is basically the number of configs to run at a time</description>
+          <defaultValue>3</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SITEST_JOBS</name>
+          <description>The number of jobs from each sitest instance to run, basically number of simulation jobs to run for a given config</description>
+          <defaultValue>4</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.0.2">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>single_set_nightly_agent</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>true</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers>
+    <hudson.triggers.TimerTrigger>
+      <spec>H H(0-6) * * *</spec>
+    </hudson.triggers.TimerTrigger>
+  </triggers>
+  <concurrentBuild>false</concurrentBuild>
+  <customWorkspace>/scratch/jenkins/archived-builds</customWorkspace>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>hostname
+env
+pwd
+
+. /sifive/tools/Modules/3.2.10/init/sh
+. /sifive/tools/Modules/3.2.10/init/bash
+
+echo $WORKSPACE
+export JENKINS_BUILDS_DIR=/scratch/jenkins/archived-builds
+
+# Create the Jenkins build dir if it doesn&apos;t exist
+mkdir -p $JENKINS_BUILDS_DIR
+cd $JENKINS_BUILDS_DIR
+echo $PWD
+
+mkdir -p $JOB_NAME/$BUILD_NUMBER
+cd $JOB_NAME/$BUILD_NUMBER
+echo $PWD
+
+
+# Setting federation folder
+git clone git@github.com:sifive/federation.git
+cd federation
+
+# Initialize git submodules and necessary environment variables
+./scripts/quick-submodule-update
+. rc.d/riscv-tools.bashrc
+
+# Fetch the latest systemc_ipdelivery
+cd software/tests; git clone git@github.com:sifive/systemc_ipdelivery; cd -
+
+export FEDERATION_GIT_HASH=`git rev-parse --short HEAD`
+export FEDERATION_ROOT=`pwd`
+export TIMESTAMP=`date &apos;+%m%d%Y%X&apos;`
+
+
+
+# Execute the scripts
+./software/tests/systemc_ipdelivery/scripts/coreip-systemc-regression.bash --config_jobs ${CONFIG_JOBS} --sitest_jobs ${SITEST_JOBS}
+
+
+
+</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.tasks.junit.JUnitResultArchiver plugin="junit@1.30">
+      <testResults>$JOB_NAME/$BUILD_NUMBER/federation/build_sc/*/sim*/*/results.xml</testResults>
+      <keepLongStdio>false</keepLongStdio>
+      <healthScaleFactor>1.0</healthScaleFactor>
+      <allowEmptyResults>false</allowEmptyResults>
+    </hudson.tasks.junit.JUnitResultArchiver>
+    <jenkins.plugins.slack.SlackNotifier plugin="slack@2.40">
+      <baseUrl></baseUrl>
+      <teamDomain></teamDomain>
+      <authToken></authToken>
+      <tokenCredentialId></tokenCredentialId>
+      <botUser>false</botUser>
+      <room>#cycle-exact-model</room>
+      <sendAsText>false</sendAsText>
+      <iconEmoji></iconEmoji>
+      <username></username>
+      <startNotification>false</startNotification>
+      <notifySuccess>true</notifySuccess>
+      <notifyAborted>false</notifyAborted>
+      <notifyNotBuilt>false</notifyNotBuilt>
+      <notifyUnstable>true</notifyUnstable>
+      <notifyRegression>false</notifyRegression>
+      <notifyFailure>false</notifyFailure>
+      <notifyEveryFailure>true</notifyEveryFailure>
+      <notifyBackToNormal>false</notifyBackToNormal>
+      <notifyRepeatedFailure>false</notifyRepeatedFailure>
+      <includeTestSummary>false</includeTestSummary>
+      <includeFailedTests>false</includeFailedTests>
+      <commitInfoChoice>NONE</commitInfoChoice>
+      <includeCustomMessage>false</includeCustomMessage>
+      <customMessage></customMessage>
+      <customMessageSuccess></customMessageSuccess>
+      <customMessageAborted></customMessageAborted>
+      <customMessageNotBuilt></customMessageNotBuilt>
+      <customMessageUnstable></customMessageUnstable>
+      <customMessageFailure></customMessageFailure>
+    </jenkins.plugins.slack.SlackNotifier>
+  </publishers>
+  <buildWrappers/>
+</project>

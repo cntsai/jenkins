@@ -1,0 +1,214 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>Running the automation script on epsilon machine</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+      <configVersion>1</configVersion>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+  </properties>
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@4.10.3">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <url>git@github.com:sifive/syssw_automation_tools.git</url>
+        <credentialsId>ad25d95a-4a30-4cc9-bda9-e836d51af0b9</credentialsId>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>*/master</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+    <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+    <submoduleCfg class="empty-list"/>
+    <extensions/>
+  </scm>
+  <assignedNode>epsilon02</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>true</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers>
+    <jenkins.triggers.ReverseBuildTrigger>
+      <spec></spec>
+      <upstreamProjects>obsolete/fusdk-meta-sifive-private</upstreamProjects>
+      <threshold>
+        <name>SUCCESS</name>
+        <ordinal>0</ordinal>
+        <color>BLUE</color>
+        <completeBuild>true</completeBuild>
+      </threshold>
+    </jenkins.triggers.ReverseBuildTrigger>
+  </triggers>
+  <concurrentBuild>true</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+echo &quot;NODE_NAME=$NODE_NAME&quot;
+echo &quot;NODE_LABELS=$NODE_LABELS&quot;
+hostname
+build_date=`date +%m-%d-%Y`
+echo &quot;build date = &lt;$build_date&gt;&quot;
+echo &quot;USER=$USER&quot;
+echo &quot;HOME=$HOME&quot;
+echo &quot;PWD=$PWD&quot;
+
+==&lt;get lastbuild&gt;==
+rm buildNumber*
+rm u-boot-spl.bin*
+rm u-boot.itb*
+
+wget https://jenkins.internal.sifive.com/view/Tools/job/syssw-automation/job/fusdk-meta-sifive-private/lastSuccessfulBuild/buildNumber
+lastSuccessfulBuild=`cat buildNumber`
+let &quot;prevBuild = $lastSuccessfulBuild - 1&quot;
+let &quot;pprevBuild = $lastSuccessfulBuild - 2&quot;
+echo &quot;lastSuccessfulBuild = $lastSuccessfulBuild&quot;
+echo &quot;prevBuild           = $prevBuild&quot;
+echo &quot;pprevBuild          = $pprevBuild&quot;
+
+
+wget https://jenkins.internal.sifive.com/view/Tools/job/syssw-automation/job/fusdk-meta-sifive-private/$lastSuccessfulBuild/artifact/FUSDK_build/sifive-fpga/u-boot-spl.bin
+
+if [ &quot;$?&quot; != &quot;0&quot; ]; then
+	wget https://jenkins.internal.sifive.com/view/Tools/job/syssw-automation/job/fusdk-meta-sifive-private/$prevBuild/artifact/FUSDK_build/sifive-fpga/u-boot-spl.bin
+    if [ &quot;$?&quot; != &quot;0&quot; ]; then
+	    wget https://jenkins.internal.sifive.com/view/Tools/job/syssw-automation/job/fusdk-meta-sifive-private/$pprevBuild/artifact/FUSDK_build/sifive-fpga/u-boot-spl.bin
+        
+        if [ &quot;$?&quot; != &quot;0&quot; ]; then
+            echo &quot;Can&apos;t find any binary. Please check binaries for FPGA is generated.&quot;
+            exit 1
+        else
+            buildID=$pprevBuild
+        fi
+    else
+        buildID=$prevBuild
+    fi
+else
+    buildID=$lastSuccessfulBuild
+fi
+
+rm u-boot-spl.bin*
+
+echo &quot;buildID=$buildID&quot;
+uboot_spl_bin=&quot;$PWD/u-boot-spl.bin&quot;
+uboot_itb_bin=&quot;$PWD/u-boot.itb&quot;
+
+# assume jenkins accquire epsilon properly
+# echo &quot;===&lt; Finding available epsilon server &gt;===&quot;
+# boardtest-alloc -t vcu118_nosd
+
+# if [ &quot;$SLURM_NODELIST&quot; == &quot;&quot; ]; then
+#    echo &quot;No epsilon allocation, exit.....&quot;
+#    exit 1
+#fi
+
+#nodeserver=`echo $SLURM_NODELIST | grep epsilon02`
+
+#if [ &quot;$nodeserver&quot; == &quot;&quot; ]; then
+#    echo &quot;epsilon02 is in use, exit.....&quot;
+#    exit 1
+#fi
+
+workdir=$PWD
+ls -al
+
+# find USB COM port
+echo &quot;===&lt; Finding COM port &gt;===&quot;
+ttyUSB_list=`find -L /sys/bus/usb/devices/ -maxdepth 2 -name ttyUSB\* | sed &apos;s=/[^/]*$==;s/\/$//&apos;`
+
+
+for sysdevpath in $ttyUSB_list ; do
+	stand_serial_port=`cat $sysdevpath/interface`
+
+	if [ &quot;$stand_serial_port&quot; == &quot;Standard Com Port&quot; ];  then
+		echo &quot;found standard comp port at $sysdevpath&quot;
+		devnode=`find -L $sysdevpath/ -maxdepth 1 -name ttyUSB\* -exec basename \{} \;`
+		echo &quot;devnode is /dev/$devnode&quot;
+	fi
+done
+
+if [ &quot;$devnode&quot; == &quot;&quot; ]; then
+	echo &quot;*** Error&quot;
+    echo &quot;===&lt; End of Finding COM port &gt;===&quot;
+	exit 1
+fi
+echo &quot;===&lt; End of Finding COM port &gt;===&quot;
+
+echo &quot;check repo&quot;
+mkdir ~/bin
+PATH=~/bin:$PATH
+curl https://storage.googleapis.com/git-repo-downloads/repo &gt; ~/bin/repo
+chmod a+x ~/bin/repo
+
+cp /home/jackat/projects/mongoose/ipdelivery/viu75_256mc/viu75_256_210609_ipdelivery.tar.gz .
+tar zxvf viu75_256_210609_ipdelivery.tar.gz 
+
+echo &quot;load python3&quot;
+module load python/python/3.8.1
+
+echo &quot;fallback check&quot;
+if ! python3 -c &apos;import sys; assert sys.version_info &gt;= (3,6)&apos; &gt; /dev/null; then
+    echo &quot;python load failed&quot;
+    export PATH=/sifive/tools/python/python/3.8.1/bin:$PATH
+    python3 --version
+fi
+
+
+#
+pip3 install pyserial
+git submodule init; git submodule update --recursive
+
+
+echo &quot;download binaries from Build #$buildID&quot;
+wget https://jenkins.internal.sifive.com/view/Tools/job/syssw-automation/job/fusdk-meta-sifive-private/$buildID/artifact/FUSDK_build/sifive-fpga/u-boot-spl.bin
+wget https://jenkins.internal.sifive.com/view/Tools/job/syssw-automation/job/fusdk-meta-sifive-private/$buildID/artifact/FUSDK_build/sifive-fpga/u-boot.itb
+
+
+set -x
+ls -al
+
+./fpga_regression_tw/script/pro_fpga_run_linux.py \
+	-i ini_templates/vcu118_viu75_256mc_ymodem_on_epsilon.ini \
+    -p /dev/$devnode \
+    -l run.log -v \
+    -skip-gengdb \
+    -ubootspl $uboot_spl_bin \
+    -ubootitb $uboot_itb_bin\
+    -y -b2uboot
+result=$?
+
+#exit
+
+set +x
+exit $result</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers>
+    <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@1.0.1">
+      <colorMapName>xterm</colorMapName>
+    </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
+    <com.cloudbees.jenkins.plugins.sshagent.SSHAgentBuildWrapper plugin="ssh-agent@1.24.1">
+      <credentialIds>
+        <string>ad25d95a-4a30-4cc9-bda9-e836d51af0b9</string>
+      </credentialIds>
+      <ignoreMissing>true</ignoreMissing>
+    </com.cloudbees.jenkins.plugins.sshagent.SSHAgentBuildWrapper>
+    <hudson.plugins.timestamper.TimestamperBuildWrapper plugin="timestamper@1.17"/>
+  </buildWrappers>
+</project>

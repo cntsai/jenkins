@@ -1,0 +1,127 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.17">
+  <actions/>
+  <description>&lt;b&gt;Disk Cleanup Script&lt;/b&gt;&#xd;
+&lt;p style=&apos;margin-left: 20px&apos;&gt;This executes a shell command on Jenkins on delta01 which removes all but the latest 15 builds ( each build has 3 directories ) &#xd;
+  from &lt;span style=&apos;font-family: monospace;&apos;&gt;/scratch/jenkins/archived-builds/federation-master-FPGATest-Run-VC707&lt;/span&gt;&#xd;
+&#xd;
+&lt;p style=&apos;margin-left: 20px&apos;&gt;Feel free click on &amp;quot;Configure&amp;quot; to the left and modify the bottom part of the script to work on any machine and execute any command, but please put it back how you&#xd;
+found it and comment any additions/etc.</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.0.1">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.43">
+    <script>import groovy.json.JsonOutput
+
+
+class InnerJobContext implements Serializable {
+    String commit
+    String baseCommit = &apos;&apos;  // Base commit to merge with
+    Boolean notifyGithubStatus = false
+    Boolean notifySlack = false
+}
+
+enum GitHubStatus implements Serializable {PENDING, FAILURE, SUCCESS}
+
+// Global variables
+// Groovy/Jenkins sandbox scoping rules are strange and functions defined in
+// this file cannot reference variables declared at the top level, but they can
+// reference classes and static class variables defined at the top level.
+class G { 
+    static String GITHUB_SSH_CREDENTIALS_ID = &apos;ad25d95a-4a30-4cc9-bda9-e836d51af0b9&apos;
+    static String GITHUB_OAUTH_TOKEN_CREDENTIALS_ID = &apos;bab094ff-ed07-4f37-ab33-67803368e526&apos;
+    static String GITHUB_REPO = &apos;sifive/federation&apos;
+}
+
+def federationCheckout(String commitish, String baseCommit) {
+    deleteDir()
+    checkout([
+        $class: &apos;GitSCM&apos;,
+        branches: [[name: commitish]],
+        userRemoteConfigs: [[
+            credentialsId: G.GITHUB_SSH_CREDENTIALS_ID,
+            url: &quot;git@github.com:${G.GITHUB_REPO}.git&quot;,
+        ]],
+    ])  
+    if (baseCommit != &apos;&apos;) {
+        sh &quot;git checkout --detach &amp;&amp; git merge ${baseCommit}&quot;
+    }   
+    sshagent([G.GITHUB_SSH_CREDENTIALS_ID]) {
+        sh &apos;./scripts/quick-submodule-update&apos;
+    }   
+}
+
+/** Run a job with all the setup, cleanup, and notifications handled.
+ *
+ * Meant to be run directly inside of a `node` block.
+ */
+def runJob(name, InnerJobContext context, env, Closure cl) {
+    timestamps {
+        wrap([$class: &apos;AnsiColorBuildWrapper&apos;, &apos;colorMapName&apos;: &apos;XTerm&apos;]) {
+            def kebabName = name.replaceAll(/ /, &apos;-&apos;)
+            ws(&quot;/scratch/jenkins/archived-builds/${env.JOB_NAME}-${kebabName}/${env.BUILD_ID}&quot;) {
+                try {
+                    federationCheckout(context.commit, context.baseCommit)
+                    // Needs to come after git checkout so it knows which repo and commit to notify for
+                    //if (context.notifyGithubStatus) {
+                       // sendGitHubStatus(GitHubStatus.PENDING, context.commit, env)
+                    //}
+                    // ensure that firrtl builds happen over slurm
+                    //env.SLURM_FIRTL=&quot;1&quot;
+                    cl()
+                    //if (context.notifyGithubStatus) {
+                    //    sendGitHubStatus(GitHubStatus.SUCCESS, context.commit, env)
+                    //}
+                } catch (e) {
+                    echo e.toString()  // Print error here, in case if another parallel build also raises an error.
+                    //if (context.notifyGithubStatus) {
+                    //    sendGitHubStatus(GitHubStatus.FAILURE, context.commit, env)
+                    //}
+                    //if (context.notifySlack) {
+                    //    notifySlack(name, env)
+                    //}
+                    throw e
+                } finally {
+                    //processXUnitXML()
+                    echo &quot;Ran on host: ${env.NODE_NAME}&quot;
+                }
+            }
+        }
+    }
+}
+
+def JobContext() {
+    new InnerJobContext()
+}
+
+
+timestamps {
+         node(&apos;delta01&apos;) {
+            // This removes all the archived builds except the latest 15
+            sh &apos;cd /scratch/jenkins/archived-builds/federation-master-FPGATest-Run-VC707 ; rm -r `ls -t | tail -n +45`&apos;
+        }
+}
+
+
+
+
+
+
+
+
+
+</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

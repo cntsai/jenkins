@@ -1,0 +1,105 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>&lt;p&gt;&lt;b&gt;Owner:&lt;/b&gt;&lt;br&gt;&#xd;
+Software Validation Team: Lewis Lu (lewis.lu@sifive.com)&lt;br&gt;</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.3"/>
+    <com.tikal.hudson.plugins.notification.HudsonNotificationProperty plugin="notification@1.15">
+      <endpoints>
+        <com.tikal.hudson.plugins.notification.Endpoint>
+          <protocol>HTTP</protocol>
+          <format>JSON</format>
+          <urlInfo>
+            <urlOrId></urlOrId>
+            <urlType>PUBLIC</urlType>
+          </urlInfo>
+          <event>all</event>
+          <timeout>30000</timeout>
+          <loglines>0</loglines>
+          <buildNotes></buildNotes>
+          <retries>0</retries>
+        </com.tikal.hudson.plugins.notification.Endpoint>
+      </endpoints>
+    </com.tikal.hudson.plugins.notification.HudsonNotificationProperty>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.4">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+      <configVersion>1</configVersion>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+  </properties>
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@4.8.2">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <url>git@github.com:lewis-sf/jenkins-test.git</url>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>*/main</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+    <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+    <submoduleCfg class="empty-list"/>
+    <extensions/>
+  </scm>
+  <assignedNode>tiny</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>echo &quot;hello world&quot;</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <jenkins.plugins.slack.SlackNotifier plugin="slack@2.48">
+      <baseUrl></baseUrl>
+      <teamDomain>sifive</teamDomain>
+      <authToken></authToken>
+      <tokenCredentialId>SlackJenkinsIntegrationToken</tokenCredentialId>
+      <botUser>false</botUser>
+      <room>tw-sw-validation-ci</room>
+      <sendAsText>false</sendAsText>
+      <iconEmoji></iconEmoji>
+      <username>Jenkins</username>
+      <startNotification>true</startNotification>
+      <notifySuccess>true</notifySuccess>
+      <notifyAborted>false</notifyAborted>
+      <notifyNotBuilt>false</notifyNotBuilt>
+      <notifyUnstable>true</notifyUnstable>
+      <notifyRegression>true</notifyRegression>
+      <notifyFailure>false</notifyFailure>
+      <notifyEveryFailure>true</notifyEveryFailure>
+      <notifyBackToNormal>false</notifyBackToNormal>
+      <notifyRepeatedFailure>false</notifyRepeatedFailure>
+      <includeTestSummary>false</includeTestSummary>
+      <includeFailedTests>false</includeFailedTests>
+      <uploadFiles>false</uploadFiles>
+      <artifactIncludes></artifactIncludes>
+      <commitInfoChoice>NONE</commitInfoChoice>
+      <includeCustomMessage>false</includeCustomMessage>
+      <customMessage></customMessage>
+      <customMessageSuccess></customMessageSuccess>
+      <customMessageAborted></customMessageAborted>
+      <customMessageNotBuilt></customMessageNotBuilt>
+      <customMessageUnstable></customMessageUnstable>
+      <customMessageFailure></customMessageFailure>
+    </jenkins.plugins.slack.SlackNotifier>
+  </publishers>
+  <buildWrappers/>
+</project>

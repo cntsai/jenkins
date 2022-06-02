@@ -1,0 +1,180 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>Builds, but does not upload to /work.  Use for daily sanity check build.</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.3"/>
+    <com.coravy.hudson.plugins.github.GithubProjectProperty plugin="github@1.34.0">
+      <projectUrl>https://github.com/sifive/sw-fs-freedomstudio/</projectUrl>
+      <displayName></displayName>
+    </com.coravy.hudson.plugins.github.GithubProjectProperty>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.4">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>REPO_BRANCH</name>
+          <description>Specify which branch to build</description>
+          <defaultValue>master</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>FEATURE_CONFIG</name>
+          <description>Feature configuration name (maybe &quot;public&quot;, &quot;devel&quot;, &quot;cockpit&quot;, &quot;llama&quot;, &quot;mongoose&quot;, etc...)
+This maps directly to a &lt;name&gt;.config file in the repo root
+Build will abort if the specified config file does not exist.</description>
+          <defaultValue>bundled</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>BUILD_PARAMETERS</name>
+          <description>Additional parameters given to the build script (i.e. &quot;--release&quot;)</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>UPLOAD_TO_AWS</name>
+          <description>Any value here will initiate an upload to AWS.  Leave blank to prevent upload.</description>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>EMAIL_SUBJECT</name>
+          <description>Subject line of the build email notification</description>
+          <defaultValue>Freedom Studio Sanity Check Build</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>BUILD_NOTES</name>
+          <description>Short description of the build for email recipients</description>
+          <defaultValue>No additional build notes were provided.  See the commit log below.</defaultValue>
+          <trim>false</trim>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>EMAIL_RECIPIENTS</name>
+          <description>All the people who want to be notified.  If cleared, then only primary repo maintainers will be notified.</description>
+          <trim>false</trim>
+        </hudson.model.TextParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>-1</daysToKeep>
+        <numToKeep>10</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+  </properties>
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@4.8.2">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <url>git@github.com:sifive/sw-fs-freedomstudio.git</url>
+        <credentialsId>f6c8dc30-52f8-4ef1-b23a-44b1be5bcbc3</credentialsId>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>$REPO_BRANCH</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+    <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+    <submoduleCfg class="empty-list"/>
+    <extensions/>
+  </scm>
+  <assignedNode>forge-on-tpp01</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>true</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers>
+    <hudson.triggers.SCMTrigger>
+      <spec>@midnight</spec>
+      <ignorePostCommitHooks>true</ignorePostCommitHooks>
+    </hudson.triggers.SCMTrigger>
+  </triggers>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+export GIT_SSH_COMMAND=/Users/jenkins/.ssh/git_ssh_command.sh
+export PATH=/usr/local/opt/maven@3.5/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+export CONFIG=$FEATURE_CONFIG
+export FS_PACKAGE_CACHE=/scratch/jenkins/fs_package_cache
+./build.sh --force --skip-pull $BUILD_PARAMETERS</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.plugins.emailext.ExtendedEmailPublisher plugin="email-ext@2.83">
+      <recipientList>kevin.mills@sifive.com, carsten.gosvig@sifive.com, 
+$EMAIL_RECIPIENTS</recipientList>
+      <configuredTriggers>
+        <hudson.plugins.emailext.plugins.trigger.SuccessTrigger>
+          <email>
+            <subject>$PROJECT_DEFAULT_SUBJECT</subject>
+            <body>$PROJECT_DEFAULT_CONTENT</body>
+            <recipientProviders>
+              <hudson.plugins.emailext.plugins.recipients.ListRecipientProvider/>
+              <hudson.plugins.emailext.plugins.recipients.DevelopersRecipientProvider/>
+            </recipientProviders>
+            <attachmentsPattern></attachmentsPattern>
+            <attachBuildLog>false</attachBuildLog>
+            <compressBuildLog>false</compressBuildLog>
+            <replyTo>$PROJECT_DEFAULT_REPLYTO</replyTo>
+            <contentType>project</contentType>
+          </email>
+        </hudson.plugins.emailext.plugins.trigger.SuccessTrigger>
+        <hudson.plugins.emailext.plugins.trigger.FailureTrigger>
+          <email>
+            <subject>$PROJECT_DEFAULT_SUBJECT</subject>
+            <body>$PROJECT_DEFAULT_CONTENT</body>
+            <recipientProviders>
+              <hudson.plugins.emailext.plugins.recipients.DevelopersRecipientProvider/>
+            </recipientProviders>
+            <attachmentsPattern></attachmentsPattern>
+            <attachBuildLog>false</attachBuildLog>
+            <compressBuildLog>false</compressBuildLog>
+            <replyTo>$PROJECT_DEFAULT_REPLYTO</replyTo>
+            <contentType>project</contentType>
+          </email>
+        </hudson.plugins.emailext.plugins.trigger.FailureTrigger>
+      </configuredTriggers>
+      <contentType>text/plain</contentType>
+      <defaultSubject>$EMAIL_SUBJECT</defaultSubject>
+      <defaultContent>$BUILD_NOTES
+
+${CHANGES_SINCE_LAST_SUCCESS}
+
+If you want to be removed from this email notification, just let me (kevin.mills@sifive.com) know.</defaultContent>
+      <attachmentsPattern></attachmentsPattern>
+      <presendScript>$DEFAULT_PRESEND_SCRIPT</presendScript>
+      <postsendScript>$DEFAULT_POSTSEND_SCRIPT</postsendScript>
+      <attachBuildLog>true</attachBuildLog>
+      <compressBuildLog>false</compressBuildLog>
+      <replyTo>kevin.mills@sifive.com, carsten.gosvig@sifive.com</replyTo>
+      <from>kevin.mills@sifive.com</from>
+      <saveOutput>false</saveOutput>
+      <disabled>false</disabled>
+    </hudson.plugins.emailext.ExtendedEmailPublisher>
+  </publishers>
+  <buildWrappers>
+    <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.39">
+      <deleteDirs>false</deleteDirs>
+      <cleanupParameter></cleanupParameter>
+      <externalDelete></externalDelete>
+      <disableDeferredWipeout>false</disableDeferredWipeout>
+    </hudson.plugins.ws__cleanup.PreBuildCleanup>
+    <hudson.plugins.timestamper.TimestamperBuildWrapper plugin="timestamper@1.13"/>
+  </buildWrappers>
+</project>

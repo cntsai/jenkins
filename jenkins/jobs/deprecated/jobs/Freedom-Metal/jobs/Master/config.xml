@@ -1,0 +1,42 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<com.cloudbees.hudson.plugins.folder.Folder plugin="cloudbees-folder@6.5.1">
+  <actions/>
+  <description>The jobs in this folder:
+&lt;ol&gt;
+  &lt;li&gt;Check out a workspace with product-coreip-sifive/master&lt;/li&gt;
+  &lt;li&gt;Bump the following packages to latest master
+    &lt;ul&gt;
+      &lt;li&gt;freedom-e-sdk&lt;/li&gt;
+      &lt;li&gt;freedom-metal&lt;/li&gt;
+      &lt;li&gt;freedom-devicetree-tools&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+Purpose: regress recent software changes against product-coreip-sifive.
+</description>
+  <displayName>Master</displayName>
+  <properties>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.config.FolderConfig plugin="pipeline-model-definition@1.3.2">
+      <dockerLabel></dockerLabel>
+      <registry plugin="docker-commons@1.13"/>
+    </org.jenkinsci.plugins.pipeline.modeldefinition.config.FolderConfig>
+  </properties>
+  <folderViews class="com.cloudbees.hudson.plugins.folder.views.DefaultFolderViewHolder">
+    <views>
+      <hudson.model.AllView>
+        <owner class="com.cloudbees.hudson.plugins.folder.Folder" reference="../../../.."/>
+        <name>All</name>
+        <filterExecutors>false</filterExecutors>
+        <filterQueue>false</filterQueue>
+        <properties class="hudson.model.View$PropertyList"/>
+      </hudson.model.AllView>
+    </views>
+    <tabBar class="hudson.views.DefaultViewsTabBar"/>
+  </folderViews>
+  <healthMetrics>
+    <com.cloudbees.hudson.plugins.folder.health.WorstChildHealthMetric>
+      <nonRecursive>false</nonRecursive>
+    </com.cloudbees.hudson.plugins.folder.health.WorstChildHealthMetric>
+  </healthMetrics>
+  <icon class="com.cloudbees.hudson.plugins.folder.icons.StockFolderIcon"/>
+</com.cloudbees.hudson.plugins.folder.Folder>

@@ -1,0 +1,171 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><project>
+  <actions/>
+  <description>Daily key benchmark score monitor and check&#13;
+Owners: Hsinyi Lee, Fu-Ching Yang&#13;
+Backup: Mike Schoenfelder&#13;
+&#13;
+Deprecate this task because it is replaced by task `score_guard_pcs`</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.3"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>-1</daysToKeep>
+        <numToKeep>30</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.18.1">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.32">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.4">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>score_guard_rhel8</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>true</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers>
+    <hudson.triggers.TimerTrigger>
+      <spec>H H(3-3) * * *</spec>
+    </hudson.triggers.TimerTrigger>
+  </triggers>
+  <concurrentBuild>false</concurrentBuild>
+  <customWorkspace>/scratch/jenkins/archived-builds/${JOB_NAME}/${BUILD_ID}</customWorkspace>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+hostname
+pwd
+umask 002
+
+# Environment setup
+# JOB_NAME and BUILD_NUMBER are Jenkins variables
+local_build_root=/scratch/jenkins/archived-builds/$JOB_NAME/$BUILD_NUMBER
+##share_root=/work/sparta/regression.nettmp/score_guard
+share_root=/work/sparta/regression/$JOB_NAME/$BUILD_NUMBER
+test_date=`TZ='Asia/Taipei' date '+%Y-%m-%d'`
+test_time=`TZ='Asia/Taipei' date '+%H%M'`
+test_time_db=`TZ='Asia/Taipei' date '+%m%d%Y%X'`
+##target_dir=$share_root/$test_date/$test_time
+target_dir=/work/sparta/regression/$JOB_NAME/$BUILD_NUMBER
+echo $target_dir
+
+# Garbage collection
+function gc {
+    # Move data back
+    chmod go+w -R $local_build_root &amp;&gt; /dev/null || true
+    rsync -ravh $local_build_root/* $target_dir &gt; /dev/null
+    # Delete the Jenkins temporary folder
+    ##rm -rf $local_build_root
+    # Delete log more than 7 days
+    find $share_root -mindepth 1 -maxdepth 1 -mtime +7 -exec rm -rf {} +
+}
+
+export SLURM_ACCOUNT=perf_ci
+export SALLOC_ACCOUNT=perf_ci
+export SLURM_BATCH=perf_ci
+
+# Create the local/share folder
+mkdir -p $local_build_root
+mkdir -p $target_dir
+trap gc EXIT
+
+cd $local_build_root
+
+#-------------DO NOT MODIFY LINES ABOVE-------------
+
+# Doing stuff here
+git clone --recursive git@github.com:sifive/score_guard.git -b score_guard-federation
+pushd score_guard/testfield
+../federation_get_runsuite.sh
+PERF_DB_INFO='golden_num' ../federation_get_score.sh
+
+cat federation/dashboard_insert_alert.log
+
+# If any score parsing fail, this run fails and exits
+if [ -f federation/score_parsing_error ]; then
+    cat federation/score_parsing_error
+    exit 1
+fi
+
+# Then, if any perf alert raises, this run is unstable
+if [ -s federation/dashboard_insert_alert.log ]; then
+    exit 100
+fi
+
+popd
+
+find $(dirname $share_root) -mindepth 1 -maxdepth 1 -mtime +7 -exec rm -rf {} +</command>
+      <configuredLocalRules/>
+      <unstableReturn>100</unstableReturn>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <jenkins.plugins.slack.SlackNotifier plugin="slack@2.48">
+      <baseUrl/>
+      <teamDomain>sifive</teamDomain>
+      <authToken/>
+      <tokenCredentialId/>
+      <botUser>false</botUser>
+      <room>#tw-perf-alert</room>
+      <sendAsText>false</sendAsText>
+      <iconEmoji/>
+      <username/>
+      <startNotification>false</startNotification>
+      <notifySuccess>false</notifySuccess>
+      <notifyAborted>false</notifyAborted>
+      <notifyNotBuilt>true</notifyNotBuilt>
+      <notifyUnstable>true</notifyUnstable>
+      <notifyRegression>true</notifyRegression>
+      <notifyFailure>false</notifyFailure>
+      <notifyEveryFailure>false</notifyEveryFailure>
+      <notifyBackToNormal>true</notifyBackToNormal>
+      <notifyRepeatedFailure>false</notifyRepeatedFailure>
+      <includeTestSummary>false</includeTestSummary>
+      <includeFailedTests>false</includeFailedTests>
+      <uploadFiles>false</uploadFiles>
+      <artifactIncludes/>
+      <commitInfoChoice>NONE</commitInfoChoice>
+      <includeCustomMessage>false</includeCustomMessage>
+      <customMessage/>
+      <customMessageSuccess/>
+      <customMessageAborted/>
+      <customMessageNotBuilt/>
+      <customMessageUnstable/>
+      <customMessageFailure/>
+    </jenkins.plugins.slack.SlackNotifier>
+    <hudson.plugins.ws__cleanup.WsCleanup plugin="ws-cleanup@0.39">
+      <patterns class="empty-list"/>
+      <deleteDirs>false</deleteDirs>
+      <skipWhenFailed>false</skipWhenFailed>
+      <cleanWhenSuccess>true</cleanWhenSuccess>
+      <cleanWhenUnstable>false</cleanWhenUnstable>
+      <cleanWhenFailure>false</cleanWhenFailure>
+      <cleanWhenNotBuilt>true</cleanWhenNotBuilt>
+      <cleanWhenAborted>true</cleanWhenAborted>
+      <notFailBuild>true</notFailBuild>
+      <cleanupMatrixParent>false</cleanupMatrixParent>
+      <externalDelete/>
+      <disableDeferredWipeout>false</disableDeferredWipeout>
+    </hudson.plugins.ws__cleanup.WsCleanup>
+  </publishers>
+  <buildWrappers>
+    <hudson.plugins.timestamper.TimestamperBuildWrapper plugin="timestamper@1.13"/>
+  </buildWrappers>
+</project>

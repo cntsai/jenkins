@@ -1,0 +1,129 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?><flow-definition plugin="workflow-job@1145.v7f2433caa07f">
+  <actions>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@1.9.3"/>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@1.9.3">
+      <jobProperties/>
+      <triggers/>
+      <parameters>
+        <string>SERIES</string>
+        <string>RELEASE_VERSION</string>
+      </parameters>
+      <options/>
+    </org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction>
+  </actions>
+  <description>Launches one weekly release management build by calling&#13;
+&lt;a href="https://github.com/sifive/archive-coreip-sifive/blob/DOPS-615_refactor_jenkins/scripts/weekly_bld.sh"&gt;&#13;
+  &lt; sifive/archive-coreip-sifive/scripts/weekly_bld.sh&lt;/a&gt;&#13;
+in a job that runs jenkins script &#13;
+&lt;a href="https://github.com/sifive/jenkins-utils/blob/DOPS-615_for_release_management/release-management/weekly_builder.Jenkinsfile"&gt;&#13;
+  sifive/release-management/weekly_builder.Jenkinsfile&lt;/a&gt;&#13;
+</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.7"/>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>5</daysToKeep>
+        <numToKeep>-1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.33">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>ARCHIVE_COREIP_SIFIVE_BRANCH</name>
+          <description>The branch of the sifive/archive-coreip-sifive.git release management repo to use for the build</description>
+          <defaultValue>DOPS-615_refactor_jenkins</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>RELEASE_VERSION</name>
+          <description>The federation branch being released</description>
+          <defaultValue>release_generator_narwhal</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>CONFIG_TYPE</name>
+          <description>The type of config to build</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>spanning</string>
+              <string>standard</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>RTL_TYPE</name>
+          <description>The RTL type - one of "full|eval|obf|systemc|withoutRTL"</description>
+          <defaultValue>full</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>SERIES</name>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>e2</string>
+              <string>e6</string>
+              <string>e7</string>
+              <string>s2</string>
+              <string>s6</string>
+              <string>s7</string>
+              <string>u6</string>
+              <string>u7</string>
+              <string>vis</string>
+              <string>viu7_128</string>
+              <string>viu7_256</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>DRYRUN</name>
+          <description>If set then just echo the build command</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.6">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit/>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers/>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@2660.vb_c0412dc4e6d">
+    <scm class="hudson.plugins.git.GitSCM" plugin="git@4.10.3">
+      <configVersion>2</configVersion>
+      <userRemoteConfigs>
+        <hudson.plugins.git.UserRemoteConfig>
+          <url>git@github.com:sifive/jenkins-utils.git</url>
+          <credentialsId>18352a7f-c03f-4cf2-a4a5-cad442f328d6</credentialsId>
+        </hudson.plugins.git.UserRemoteConfig>
+      </userRemoteConfigs>
+      <branches>
+        <hudson.plugins.git.BranchSpec>
+          <name>*/DOPS-615_for_release_management</name>
+        </hudson.plugins.git.BranchSpec>
+      </branches>
+      <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+      <gitTool>Default</gitTool>
+      <submoduleCfg class="empty-list"/>
+      <extensions/>
+    </scm>
+    <scriptPath>release-management/weekly_builder.Jenkinsfile</scriptPath>
+    <lightweight>false</lightweight>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

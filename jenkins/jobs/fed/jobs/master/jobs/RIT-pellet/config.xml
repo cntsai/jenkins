@@ -1,0 +1,134 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.41">
+  <actions/>
+  <description>Random instruction tests on federation-master (e.g. torture, RAT)</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.jira.JiraProjectProperty plugin="jira@3.3"/>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty/>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableResumeJobProperty/>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.4">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>2</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>GIT_COMMIT</name>
+          <description>Git commit to run </description>
+          <defaultValue>master</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SUITE</name>
+          <defaultValue>test-RITs</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>CONFIG_SET</name>
+          <defaultValue>coreip_pellet</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>JENKINS_TIMEOUT</name>
+          <description>Number of Hours the Jenkins Job should run for before being killed</description>
+          <defaultValue>22</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>RUNSUITE_NUM_THREADS</name>
+          <description>Select the number of threads for run-suite, which is basically the number of configs to run at a time.
+&lt;BR&gt;
+Based on this Number a Jenkins Agent Will be Selected-
+&lt;ul&gt;
+  &lt;li&gt;&lt;B&gt;Default&lt;/B&gt; Standard Agent&lt;/li&gt;
+  &lt;li&gt;&lt;B&gt;&lt;= 4&lt;/B&gt; Small Agent&lt;/li&gt;
+  &lt;li&gt;&lt;B&gt;&gt; 8&lt;/B&gt; BIG Agent&lt;/li&gt;
+&lt;/ul&gt;</description>
+          <defaultValue>10</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SITEST_JOBS</name>
+          <description>The number of jobs from each sitest instance to run, basically number of simulation jobs to run for a given config</description>
+          <defaultValue>50</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SIMSCOPE_PROJECT</name>
+          <defaultValue>master</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SIMSCOPE_COMPONENT</name>
+          <defaultValue>RIT</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>NODE_AGENT</name>
+          <defaultValue>nightly_standard_cloud_agent_rhel8</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>SITEST_TEST_WALLTIME_LIMIT</name>
+          <defaultValue>05:30:00</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>14</daysToKeep>
+        <numToKeep>-1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers>
+        <hudson.triggers.TimerTrigger>
+          <spec>H 10 * * *</spec>
+        </hudson.triggers.TimerTrigger>
+      </triggers>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@2.93">
+    <scm class="hudson.plugins.git.GitSCM" plugin="git@4.8.2">
+      <configVersion>2</configVersion>
+      <userRemoteConfigs>
+        <hudson.plugins.git.UserRemoteConfig>
+          <url>git@github.com:sifive/federation.git</url>
+          <credentialsId>ad25d95a-4a30-4cc9-bda9-e836d51af0b9</credentialsId>
+        </hudson.plugins.git.UserRemoteConfig>
+      </userRemoteConfigs>
+      <branches>
+        <hudson.plugins.git.BranchSpec>
+          <name>*/master</name>
+        </hudson.plugins.git.BranchSpec>
+      </branches>
+      <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+      <submoduleCfg class="empty-list"/>
+      <extensions>
+        <hudson.plugins.git.extensions.impl.CheckoutOption>
+          <timeout>60</timeout>
+        </hudson.plugins.git.extensions.impl.CheckoutOption>
+        <hudson.plugins.git.extensions.impl.CloneOption>
+          <shallow>false</shallow>
+          <noTags>false</noTags>
+          <reference>/sifive/github-cache/federation.git</reference>
+          <timeout>60</timeout>
+          <honorRefspec>false</honorRefspec>
+        </hudson.plugins.git.extensions.impl.CloneOption>
+      </extensions>
+    </scm>
+    <scriptPath>jenkins/rit.Jenkinsfile</scriptPath>
+    <lightweight>true</lightweight>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>
