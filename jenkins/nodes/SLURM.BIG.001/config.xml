@@ -1,0 +1,31 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<slave>
+  <name>SLURM.BIG.001</name>
+  <description></description>
+  <remoteFS>/tmp</remoteFS>
+  <numExecutors>1</numExecutors>
+  <mode>EXCLUSIVE</mode>
+  <retentionStrategy class="hudson.slaves.RetentionStrategy$Demand">
+    <inDemandDelay>5</inDemandDelay>
+    <idleDelay>15</idleDelay>
+  </retentionStrategy>
+  <launcher class="org.jenkinsci.plugins.slave_setup.SetupSlaveLauncher" plugin="slave-setup@1.10">
+    <launcher class="hudson.slaves.JNLPLauncher">
+      <workDirSettings>
+        <disabled>false</disabled>
+        <internalDir>remoting</internalDir>
+        <failIfWorkDirIsMissing>false</failIfWorkDirIsMissing>
+      </workDirSettings>
+      <webSocket>false</webSocket>
+    </launcher>
+    <startScript>(cd ~/jenkins-utils &amp;&amp; git pull git@github.com:sifive/jenkins-utils.git) &amp;&amp; \
+AGENT_NAME=SLURM.BIG.001 \
+JNLP_SECRET=8f74c8b33fd1509f128ba722eb4764516ddfd527702891f6f46b2f2f46e65024 \
+JENKINS_URL=https://jenkins.internal.sifive.com/ \
+JENKINS_AGENT_SLURM_PARTITION=redhat \
+~/jenkins-utils/tools/jenkins-agent-salloc-big.sh</startScript>
+    <stopScript></stopScript>
+  </launcher>
+  <label>nightly_big_agent_rhel8</label>
+  <nodeProperties/>
+</slave>

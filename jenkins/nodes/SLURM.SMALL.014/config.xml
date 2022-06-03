@@ -1,0 +1,31 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<slave>
+  <name>SLURM.SMALL.014</name>
+  <description></description>
+  <remoteFS>/scratch/jenkins</remoteFS>
+  <numExecutors>1</numExecutors>
+  <mode>EXCLUSIVE</mode>
+  <retentionStrategy class="hudson.slaves.RetentionStrategy$Demand">
+    <inDemandDelay>0</inDemandDelay>
+    <idleDelay>10</idleDelay>
+  </retentionStrategy>
+  <launcher class="org.jenkinsci.plugins.slave_setup.SetupSlaveLauncher" plugin="slave-setup@1.10">
+    <launcher class="hudson.slaves.JNLPLauncher">
+      <workDirSettings>
+        <disabled>false</disabled>
+        <internalDir>remoting</internalDir>
+        <failIfWorkDirIsMissing>false</failIfWorkDirIsMissing>
+      </workDirSettings>
+      <webSocket>false</webSocket>
+    </launcher>
+    <startScript>(cd ~/jenkins-utils &amp;&amp; git pull git@github.com:sifive/jenkins-utils.git) &amp;&amp; \
+AGENT_NAME=SLURM.SMALL.014 \
+JNLP_SECRET=5effea68d0447fbaf5ae27bd4c0f71706f72c6dd74b7fea7445842aa073cb7d5 \
+JENKINS_AGENT_SLURM_PARTITION=redhat \
+JENKINS_URL=https://jenkins.internal.sifive.com/ \
+~/jenkins-utils/tools/jenkins-agent-salloc-small.sh</startScript>
+    <stopScript></stopScript>
+  </launcher>
+  <label>nightly_small_agent_rhel8 score_guard_rhel8 perf_corr_rhel8</label>
+  <nodeProperties/>
+</slave>

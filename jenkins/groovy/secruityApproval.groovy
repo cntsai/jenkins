@@ -6,7 +6,26 @@ import org.jenkinsci.plugins.scriptsecurity.sandbox.whitelists.*;
 
 scriptApproval = ScriptApproval.get()
 approveSignature()
+aclApproveSignature()
 scriptApproval.save()
+
+void aclApproveSignature() {
+    def signatures = [
+        "method groovy.lang.Binding hasVariable java.lang.String",
+        "method hudson.model.Actionable getActions java.lang.Class",
+        "method java.lang.String join java.lang.CharSequence java.lang.CharSequence[]",
+        "staticMethod GitHubStatus \$INIT java.lang.Object[]",
+        "staticMethod Timeunit \$INIT java.lang.Object[]",
+        "staticMethod org.codehaus.groovy.runtime.DefaultGroovyMethods get java.util.Map java.lang.Object java.lang.Object",
+        "staticMethod org.codehaus.groovy.runtime.DefaultGroovyMethods hasProperty java.lang.Object java.lang.String"
+    ]
+    alreadyApproved = new HashSet<>(Arrays.asList(scriptApproval.getAclApprovedSignatures()))
+    for (s in signatures) {
+        if (!alreadyApproved.contains(s)) {
+            scriptApproval.aclApproveSignature(s)
+        }
+    }
+}
 
 void approveSignature() {
     def signatures = [

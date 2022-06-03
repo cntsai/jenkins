@@ -1,0 +1,32 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<slave>
+  <name>SLURM.CRITICAL.015</name>
+  <description></description>
+  <remoteFS>/scratch/jenkins</remoteFS>
+  <numExecutors>1</numExecutors>
+  <mode>EXCLUSIVE</mode>
+  <retentionStrategy class="hudson.slaves.RetentionStrategy$Demand">
+    <inDemandDelay>1</inDemandDelay>
+    <idleDelay>2</idleDelay>
+  </retentionStrategy>
+  <launcher class="org.jenkinsci.plugins.slave_setup.SetupSlaveLauncher" plugin="slave-setup@1.10">
+    <launcher class="hudson.slaves.JNLPLauncher">
+      <workDirSettings>
+        <disabled>false</disabled>
+        <internalDir>remoting</internalDir>
+        <failIfWorkDirIsMissing>false</failIfWorkDirIsMissing>
+      </workDirSettings>
+      <webSocket>false</webSocket>
+    </launcher>
+    <startScript>(cd ~/jenkins-utils &amp;&amp; git pull git@github.com:sifive/jenkins-utils.git) &amp;&amp; \
+AGENT_NAME=SLURM.CRITICAL.015 \
+JNLP_SECRET=5dd077ccdd57f04a552aa69b384c4a8c3019c454e9a59b5f83eb525439999dcb \
+JENKINS_AGENT_SLURM_PARTITION=redhat \
+JENKINS_AGENT_SALLOC_ACCOUNT=misc_ci \
+JENKINS_URL=https://jenkins.internal.sifive.com/ \
+~/jenkins-utils/tools/jenkins-agent-salloc-small.sh</startScript>
+    <stopScript></stopScript>
+  </launcher>
+  <label>critical_small</label>
+  <nodeProperties/>
+</slave>

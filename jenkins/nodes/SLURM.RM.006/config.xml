@@ -1,0 +1,31 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<slave>
+  <name>SLURM.RM.006</name>
+  <description>Agent dedicated for Release Management Team Runs</description>
+  <remoteFS>/scratch/jenkins</remoteFS>
+  <numExecutors>1</numExecutors>
+  <mode>EXCLUSIVE</mode>
+  <retentionStrategy class="hudson.slaves.RetentionStrategy$Demand">
+    <inDemandDelay>0</inDemandDelay>
+    <idleDelay>1</idleDelay>
+  </retentionStrategy>
+  <launcher class="org.jenkinsci.plugins.slave_setup.SetupSlaveLauncher" plugin="slave-setup@1.10">
+    <launcher class="hudson.slaves.JNLPLauncher">
+      <workDirSettings>
+        <disabled>false</disabled>
+        <internalDir>remoting</internalDir>
+        <failIfWorkDirIsMissing>false</failIfWorkDirIsMissing>
+      </workDirSettings>
+      <webSocket>false</webSocket>
+    </launcher>
+    <startScript>(cd ~/jenkins-utils &amp;&amp; git pull git@github.com:sifive/jenkins-utils.git) &amp;&amp; \
+AGENT_NAME=SLURM.RM.006 \
+JENKINS_AGENT_SLURM_PARTITION=redhat_cloud \
+JNLP_SECRET=d079f03f563985446a50df4172255f59caf4e3b978191a008a0352465b92e4e0 \
+JENKINS_URL=https://jenkins.internal.sifive.com/ \
+~/jenkins-utils/tools/jenkins-agent-salloc-release-management.sh</startScript>
+    <stopScript></stopScript>
+  </launcher>
+  <label>slurm-rm slurm-rm-spanning slurm-rm-spanning-u</label>
+  <nodeProperties/>
+</slave>

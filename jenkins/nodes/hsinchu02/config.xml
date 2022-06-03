@@ -1,0 +1,41 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<slave>
+  <temporaryOfflineCause class="hudson.slaves.OfflineCause$UserCause">
+    <timestamp>1653428452889</timestamp>
+    <description>
+      <holder>
+        <owner>hudson.slaves.Messages</owner>
+      </holder>
+      <key>SlaveComputer.DisconnectedBy</key>
+      <args>
+        <string>marshall.adrian@sifive.com</string>
+        <string></string>
+      </args>
+    </description>
+    <userId>marshall.adrian@sifive.com</userId>
+  </temporaryOfflineCause>
+  <name>hsinchu02</name>
+  <description>Server located at Taiwan HsinChu Office</description>
+  <remoteFS>/scratch/jenkins</remoteFS>
+  <numExecutors>1</numExecutors>
+  <mode>EXCLUSIVE</mode>
+  <retentionStrategy class="hudson.slaves.RetentionStrategy$Demand">
+    <inDemandDelay>1</inDemandDelay>
+    <idleDelay>1</idleDelay>
+  </retentionStrategy>
+  <launcher class="hudson.slaves.CommandLauncher" plugin="command-launcher@1.6">
+    <agentCommand>bash -c &quot;ssh -v jenkins@$NODE_NAME -o \&quot;ProxyCommand=ssh jenkins@taiwan.sifive.com -p 55688 -W %h:%p\&quot;  \&quot;cd $AGENT_HOME_DIR &amp;&amp; java -jar /home/jenkins/agent.jar\&quot;&quot;</agentCommand>
+  </launcher>
+  <label>hsinchu hsinchu.big</label>
+  <nodeProperties>
+    <hudson.tools.ToolLocationNodeProperty>
+      <locations>
+        <hudson.tools.ToolLocationNodeProperty_-ToolLocation>
+          <type>hudson.plugins.git.GitTool$DescriptorImpl</type>
+          <name>Default</name>
+          <home>/usr/bin/git</home>
+        </hudson.tools.ToolLocationNodeProperty_-ToolLocation>
+      </locations>
+    </hudson.tools.ToolLocationNodeProperty>
+  </nodeProperties>
+</slave>
