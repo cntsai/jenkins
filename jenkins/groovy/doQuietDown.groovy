@@ -21,13 +21,33 @@ def stopJobs(job) {
       stopJobs(child)
     }
   } else if (job in org.jenkinsci.plugins.workflow.job.WorkflowJob) {
-    if (job.isBuilding()) {
+    try {
+      if (!job.isBuilding()) {
+        return
+      }
       for (build in job.builds) {
       	build.doKill()
       }
+    } catch (Exception e) {
+      println(e.toString())
     }
-    job.disabled = true
   }
 }
 
-Jenkins.instance.doQuietDown();
+disableChildren(Hudson.instance.items)
+
+def disableChildren(items) {
+  for (item in items) {
+    println(item.class.canonicalName)
+    if (item.class.canonicalName == 'hudson.model.ExternalJob') {
+      continue
+    }
+    if (item.class.canonicalName != 'com.cloudbees.hudson.plugins.folder.Folder') {
+      item.doDisable()
+      item.save()
+      println(item.name)
+    } else {
+      disableChildren(((com.cloudbees.hudson.plugins.folder.Folder) item).getItems())
+    }
+  }
+}
