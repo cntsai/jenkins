@@ -45,11 +45,6 @@
         owner: "{{ ansible_user }}"
         recurse: yes
 
-    - name: Upload casc.yaml
-      copy:
-        src: casc.yaml
-        dest: "{{ jenkins.directory }}/casc.yaml"
-
     - name: Run Jenkins
       docker_container:
         name: "{{ jenkins['name'] }}"
