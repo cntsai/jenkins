@@ -1,4 +1,4 @@
-.PHONY: all run clean jenkins deploy apply destroy
+.PHONY: all run clean jenkins push deploy apply destroy
 
 jenkins = crazyguitar/jenkins:latest
 
@@ -15,6 +15,9 @@ help:
 
 jenkins:
 	bash ./build.sh -j "jenkins" -t "$(jenkins)"
+
+push:
+	docker push "$(jenkins)"
 
 deploy:
 	cd ansible && ansible all -i inventory -m ping
