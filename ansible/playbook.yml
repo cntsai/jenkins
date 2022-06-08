@@ -38,12 +38,16 @@
     - name: Include jenkins variables
       include_vars: jenkins.yml
 
-    - name: Create jenkins volume folder
-      file:
-        path: "{{ jenkins.directory }}"
-        state: directory
-        owner: "{{ ansible_user }}"
-        recurse: yes
+    - name: Unarchive backup
+      unarchive:
+        src: "{{ jenkins.backup }}"
+        dest: "{{ ansible_env.HOME }}"
+
+    - name: Copy jenkins home
+      copy:
+        src: "{{ ansible_env.HOME }}/jenkins-backup/"
+        dest: "{{ jenkins.directory }}"
+        remote_src: yes
 
     - name: Run Jenkins
       docker_container:
