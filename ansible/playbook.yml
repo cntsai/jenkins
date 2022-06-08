@@ -38,16 +38,21 @@
     - name: Include jenkins variables
       include_vars: jenkins.yml
 
-    - name: Unarchive backup
-      unarchive:
-        src: "{{ jenkins.backup }}"
-        dest: "{{ ansible_env.HOME }}"
+    - name: Create jenkins volume folder
+      file:
+        path: "{{ jenkins.directory }}"
+        state: directory
+        owner: "{{ ansible_user }}"
+        recurse: yes
 
     - name: Copy jenkins home
       copy:
-        src: "{{ ansible_env.HOME }}/jenkins-backup/"
-        dest: "{{ jenkins.directory }}"
-        remote_src: yes
+        src: "keys/"
+        dest: "{{ jenkins.directory }}/.ssh"
+
+    - name: Create a network
+      docker_network:
+        name: jenkins-networks
 
     - name: Run Jenkins
       docker_container:
@@ -58,3 +63,16 @@
         restart_policy: always
         pull: yes
         recreate: yes
+        networks:
+          - name: jenkins-networks
+
+    - name: Run Jenkins SSH Agent
+      docker_container:
+        name: ssh-agent
+        image: jenkins/ssh-agent
+        restart_policy: always
+        recreate: yes
+        networks:
+          - name: jenkins-networks
+        env:
+          JENKINS_AGENT_SSH_PUBKEY: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDdekyUWSS9ZV7p+zvcKgsbQKHDiDXRWt8V//KIV3OvVKLK/5LD4gDCiB9FwvEPKw4bhmcEyeO1mwTQftgAYUed3BOK1UpMu82IsIz/susNQTsIyOx+DbMAM9dlr4hq6MB8SvyWjz5AVw+SY2shqF+n3dG8Anhpzzv73jRg08IV/MTZzLH8kKdZK5TRkCu3TljDu1Lxq0/etFSCH/sR6OgX3wWIci7/YYRL5ZiFs2KRVlie4wZtJed5ChDw/RUvfuBrQBYXJaYGGiaal0N+LgGXYJH7+cVLbXsiNARZXbrG+II+DQe+KOdgPbRslJIX3tEuT0IkoC3b57tc8dbtb82qTppLWGSX3sIu9cydfIivqCjOjLFFvTknOrdY0toNOmDFtpxoLp4HPPWYTyVUhfVwv0wJKtuzsjD99P1FpLLXgz3DsCo89Za4tYs0b11U36JhNcsh7GxcdbYXevOODfys/KUgFAJW60eaF1M+y2KlK4sdA1vurcHIgKIIc43rRsU= changningt@ctsai-0130.local
