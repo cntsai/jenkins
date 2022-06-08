@@ -55,3 +55,6 @@
         image: "{{ jenkins['image'] }}"
         ports: "{{ jenkins['ports'] }}"
         volumes: "{{ jenkins['volumes'] }}"
+        restart_policy: always
+        pull: yes
+        recreate: yes
