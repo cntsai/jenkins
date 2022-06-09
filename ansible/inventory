@@ -3,3 +3,9 @@
 [jenkins:vars]
 ansible_user =
 ansible_ssh_private_key_file =
+
+[backup]
+
+[backup:vars]
+ansible_user =
+ansible_ssh_private_key_file =
