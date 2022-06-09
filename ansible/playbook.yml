@@ -35,20 +35,33 @@
     - name: Show home directory
       debug: var=ansible_env.HOME
 
-    - name: Include jenkins variables
+    - name: Include Jenkins variables
       include_vars: jenkins.yml
 
-    - name: Create jenkins volume folder
+    - name: Create Jenkins volume folder
       file:
         path: "{{ jenkins.directory }}"
         state: directory
         owner: "{{ ansible_user }}"
         recurse: yes
 
+    - name: Create Jenkins volume folder
+      file:
+        path: "{{ ansible_env.HOME }}/backup"
+        state: directory
+        owner: "{{ ansible_user }}"
+        recurse: yes
+
+    - name: Unarchive Jenkins home
+      unarchive:
+        src: "backup/backup.tar.gz"
+        dest: "{{ ansible_env.HOME }}/backup/"
+
     - name: Copy jenkins home
       copy:
-        src: "keys/"
-        dest: "{{ jenkins.directory }}/.ssh"
+        src: "{{ ansible_env.HOME }}/backup/jenkins-backup/"
+        dest: "{{ jenkins.directory }}"
+        remote_src: yes
 
     - name: Create a network
       docker_network:
@@ -94,11 +107,11 @@
     - name: Setup cron job
       cron:
         name: "Run Jenkins backup cron"
-        minute: 0
-        job: "{{ ansible_env.HOME }}/jenkins-backup-script/jenkins-backup.sh {{ jenkins.directory }} {{ ansible_env.HOME }}/backup/backup_`date +'%Y%m%d%H%M%S'`.tar.gz"
+        minute: "*"
+        job: "{{ ansible_env.HOME }}/jenkins-backup-script/jenkins-backup.sh {{ jenkins.directory }} {{ ansible_env.HOME }}/backup/backup.tar.gz"
 
     - name: Setup old backup deletation
       cron:
         name: "Run Jenkins backup deletation"
-        minute: 15
-        job: "find {{ ansible_env.HOME }}/backup/backup_* -mmin +15 -delete"
+        minute: "*/5"
+        job: "find {{ ansible_env.HOME }}/backup/backup.tar.gz -mmin +15 -delete"

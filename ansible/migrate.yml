@@ -1,0 +1,29 @@
+---
+
+- name: Start Jenkins
+  hosts: backup
+  tasks:
+    - name: Unarchive backup
+      unarchive:
+        src: "{{ ansible_env.HOME }}/backup/backup.tar.gz"
+        dest: "{{ ansible_env.HOME }}"
+        remote_src: yes
+
+    - name: Include Jenkins backup variables
+      include_vars: backup.yml
+
+    - name: Create a network
+      docker_network:
+        name: jenkins-networks
+
+    - name: Setup new Jenkins
+      docker_container:
+        name: "{{ jenkins['name'] }}"
+        image: "{{ jenkins['image'] }}"
+        ports: "{{ jenkins['ports'] }}"
+        volumes: "{{ jenkins['volumes'] }}"
+        restart_policy: always
+        pull: yes
+        recreate: yes
+        networks:
+          - name: jenkins-networks

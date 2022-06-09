@@ -5,6 +5,5 @@ jenkins:
     - "8080:8080"
     - "50000:50000"
   directory: "{{ ansible_env.HOME }}/jenkins/"
-  backup: "backup.tar.gz"
   volumes:
     - "{{ ansible_env.HOME }}/jenkins:/var/jenkins_home"

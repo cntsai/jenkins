@@ -1,0 +1,9 @@
+jenkins:
+  name: jenkins-backup
+  image: crazyguitar/jenkins:latest
+  ports:
+    - "8081:8080"
+    - "50001:50000"
+  directory: "{{ ansible_env.HOME }}/jenkins-backup/"
+  volumes:
+    - "{{ ansible_env.HOME }}/jenkins-backup:/var/jenkins_home"
