@@ -19,6 +19,42 @@ docker push "${image}"
 make deploy
 ```
 
+### Demo
+
+The following commands show how to handle failover and upgrade Jenkins.
+
+```
+# create a AWS instance
+$ make apply
+
+# restore Jenkins
+$ make deploy
+
+# login to EC2 instance to check
+# 1. backup jobs is ready (crontab -l)
+# 2. check jenkins folder is existed
+# 3. open browser "http://${HOST}:8080" to check Jenkins is ready
+
+# prepare a new Jenkins
+$ make migrate
+
+# open browser "http://${HOST}:8081" to check the new Jenkins is ready
+
+# shutdown the old Jenkins
+# 1. disable all jobs in the old Jenkins
+# 2. set prepare to shutdown
+$ docker stop ${old_jenkins}
+
+# copy old artifact to the new Jenkins
+# ssh login to the remote server
+$ cp -r jenkins/jobs jenkins-backup/
+
+# restart the new Jenkins
+$ docker restart ${new_jenkins}
+
+# open the new jenkins "http://${HOST}:8081"
+```
+
 ### Reference
 
 1. [How To Automate Jenkins Setup with Docker and Jenkins Configuration as Code](https://www.digitalocean.com/community/tutorials/how-to-automate-jenkins-setup-with-docker-and-jenkins-configuration-as-code)
