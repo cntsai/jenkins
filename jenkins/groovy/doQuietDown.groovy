@@ -34,27 +34,27 @@ def stopJobs(job) {
   }
 }
 
-disableChildren(Hudson.instance.items)
+def file = new File("/var/jenkins_home/jobs.txt")
+def writer = file.newWriter()
+disableChildren(Hudson.instance.items, writer)
+writer.close()
 
-def disableChildren(items) {
-  File file = new File("/var/jenkins_home/jobs.txt")
-
+def disableChildren(items, writer) {
   for (item in items) {
-    println(item.class.canonicalName)
     if (item.class.canonicalName == 'hudson.model.ExternalJob') {
       continue
     }
     if (item.class.canonicalName != 'com.cloudbees.hudson.plugins.folder.Folder') {
       if (item.isDisabled()) {
-        file << "${item.name}:disabled\n"
+        writer << "${item.name}:disabled\n"
       } else {
-        file << "${item.name}:enabled\n"
+        writer << "${item.name}:enabled\n"
       }
       item.doDisable()
       item.save()
       println(item.name)
     } else {
-      disableChildren(((com.cloudbees.hudson.plugins.folder.Folder) item).getItems())
+      disableChildren(((com.cloudbees.hudson.plugins.folder.Folder) item).getItems(), writer)
     }
   }
 }
