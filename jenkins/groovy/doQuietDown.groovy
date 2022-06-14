@@ -37,12 +37,19 @@ def stopJobs(job) {
 disableChildren(Hudson.instance.items)
 
 def disableChildren(items) {
+  File file = new File("/var/jenkins_home/jobs.txt")
+
   for (item in items) {
     println(item.class.canonicalName)
     if (item.class.canonicalName == 'hudson.model.ExternalJob') {
       continue
     }
     if (item.class.canonicalName != 'com.cloudbees.hudson.plugins.folder.Folder') {
+      if (item.isDisabled()) {
+        file << "${item.name}:disabled\n"
+      } else {
+        file << "${item.name}:enabled\n"
+      }
       item.doDisable()
       item.save()
       println(item.name)
